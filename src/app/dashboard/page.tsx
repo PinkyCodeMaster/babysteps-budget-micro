@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AddPaymentForm } from "@/components/add-payment-form";
 import { AddDebtForm } from "@/components/add-debt-form";
 import { DeleteDebtButton } from "@/components/delete-debt-button";
+import { EditDebtForm } from "@/components/edit-debt-form";
 
 type Debt = {
   id: number;
@@ -27,9 +28,7 @@ export default async function DashboardPage() {
   let data: DashboardData | null = null;
 
   try {
-    const res = await fetch("http://localhost:3000/api/debts", {
-      cache: "no-store",
-    });
+    const res = await fetch("/api/debts", { cache: "no-store" });
 
     if (res.ok) {
       data = await res.json();
