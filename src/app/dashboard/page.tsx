@@ -3,6 +3,7 @@ import { AddPaymentForm } from "@/components/add-payment-form";
 import { AddDebtForm } from "@/components/add-debt-form";
 import { DeleteDebtButton } from "@/components/delete-debt-button";
 import { EditDebtForm } from "@/components/edit-debt-form";
+import { EditDebtForm } from "@/components/edit-debt-form";
 
 type Debt = {
   id: number;
