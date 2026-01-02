@@ -3,7 +3,6 @@ import { AddPaymentForm } from "@/components/add-payment-form";
 import { AddDebtForm } from "@/components/add-debt-form";
 import { DeleteDebtButton } from "@/components/delete-debt-button";
 import { EditDebtForm } from "@/components/edit-debt-form";
-import { EditDebtForm } from "@/components/edit-debt-form";
 
 type Debt = {
   id: number;
@@ -60,7 +59,7 @@ export default async function DashboardPage() {
             <CardTitle>Total Debt</CardTitle>
           </CardHeader>
           <CardContent className="text-lg font-semibold">
-            ${summary.totalDebt}
+            £{summary.totalDebt}
           </CardContent>
         </Card>
 
@@ -69,7 +68,7 @@ export default async function DashboardPage() {
             <CardTitle>Total Paid</CardTitle>
           </CardHeader>
           <CardContent className="text-lg font-semibold">
-            ${summary.totalPaid}
+            £{summary.totalPaid}
           </CardContent>
         </Card>
 
@@ -108,15 +107,18 @@ export default async function DashboardPage() {
               key={debt.id}
               className="flex flex-col gap-3 border-b pb-3"
             >
-              <div className="flex items-center justify-between">
-                <div>
+              <div className="flex items-start justify-between gap-4">
+                <div className="space-y-1">
                   <p className="font-medium">{debt.name}</p>
                   <p className="text-sm text-muted-foreground">
                     Remaining: £{debt.remainingBalance}
                   </p>
                 </div>
 
-                <DeleteDebtButton debtId={debt.id} />
+                <div className="flex gap-2">
+                  <EditDebtForm debt={debt} />
+                  <DeleteDebtButton debtId={debt.id} />
+                </div>
               </div>
 
               {debt.remainingBalance > 0 && (

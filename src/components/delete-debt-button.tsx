@@ -47,7 +47,7 @@ export function DeleteDebtButton({ debtId }: Props) {
         onClick={handleDelete}
         disabled={loading}
       >
-        {loading ? "Deleting…" : "Confirm"}
+        {loading ? "Deleting..." : "Confirm"}
       </Button>
       <Button
         variant="ghost"
