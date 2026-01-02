@@ -1,6 +1,7 @@
 import { db } from "@/db";
 import { debtTable } from "@/db/schema";
 
+// Lists debts with derived totals (remaining + paid) and snowball ordering.
 export async function GET() {
   const debts = await db.query.debtTable.findMany({
     with: {
@@ -8,6 +9,7 @@ export async function GET() {
     },
   });
 
+  // Derive totals per debt from payment rows rather than storing duplicates.
   const enrichedDebts = debts.map((debt) => {
     const totalPaid = debt.payments.reduce(
       (sum, p) => sum + p.amount,
@@ -23,6 +25,7 @@ export async function GET() {
     };
   });
 
+  // Debt snowball: smallest remaining balance first.
   const snowballDebts = enrichedDebts.sort(
     (a, b) => a.remainingBalance - b.remainingBalance
   );
@@ -54,7 +57,7 @@ export async function GET() {
   });
 }
 
-
+// Creates a debt; numeric fields validated server-side.
 export async function POST(request: Request) {
     const body = await request.json();
 
@@ -62,7 +65,10 @@ export async function POST(request: Request) {
 
     if (!name || balance <= 0 || minimumPayment <= 0) {
 
-        return Response.json({ error: "Invalid debt data" }, { status: 400 });
+        return Response.json(
+            { error: "Please check the debt details and try again." },
+            { status: 400 }
+        );
     }
 
     const [created] = await db

@@ -1,9 +1,11 @@
 import { db } from "@/db";
 import { debtTable, paymentTable } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { NextRequest } from "next/server";
 
 type ParsedId = { debtId: number } | { error: Response };
 
+// Validate the debt id from the route.
 function parseDebtId(id: string): ParsedId {
   const debtId = Number(id);
   if (Number.isNaN(debtId)) {
@@ -13,6 +15,7 @@ function parseDebtId(id: string): ParsedId {
   return { debtId };
 }
 
+// Fetch debt with payments and derive totals to simplify handler logic.
 async function fetchDebt(debtId: number) {
   const debt = await db.query.debtTable.findFirst({
     where: eq(debtTable.id, debtId),
@@ -31,8 +34,9 @@ async function fetchDebt(debtId: number) {
   return { data: debt, totalPaid, remainingBalance };
 }
 
-export async function GET(_: Request, { params }: { params: { id: string } }) {
-  const parsed = parseDebtId(params.id);
+export async function GET(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const parsed = parseDebtId(id);
   if ("error" in parsed) return parsed.error;
   const debtId = parsed.debtId;
 
@@ -46,8 +50,9 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
   });
 }
 
-export async function POST(request: Request, { params }: { params: { id: string } }) {
-  const parsed = parseDebtId(params.id);
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const parsed = parseDebtId(id);
   if ("error" in parsed) return parsed.error;
   const debtId = parsed.debtId;
 
@@ -70,6 +75,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
     );
   }
 
+  // Get the current balance context to enforce overpayment guard.
   const debt = await fetchDebt(debtId);
   if (debt.error) return debt.error;
 

@@ -1,36 +1,136 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# BabySteps - Budget Micro
 
-## Getting Started
+A minimal budgeting and debt-snowball tracker built as a finished, portfolio-ready project.
 
-First, run the development server:
+This app focuses on the core personal-finance flow: add debts -> record payments -> track progress, without over-engineering.
+
+---
+
+## What it does
+
+- Add and manage debts (credit cards, loans, CCJs)
+- Record payments safely with validation
+- Automatically calculate remaining balances
+- Sort debts using the debt snowball method
+- Show clear progress and totals
+
+No accounts. No bank connections. No noise.
+
+---
+
+## Design principles
+
+- Finished over fancy - small scope, fully complete
+- Derived data - balances are calculated from payments, not duplicated
+- Server-first - backend logic lives in API routes
+- Simple UX - clear states, no dead ends
+
+---
+
+## Tech stack
+
+- Next.js 16 (App Router) + TypeScript
+- Drizzle ORM
+- Neon (Postgres)
+- shadcn/ui
+- Tailwind CSS
+
+---
+
+## Core features
+
+- Debt CRUD (create, update, delete)
+- Payment tracking with overpayment protection
+- Snowball ordering by remaining balance
+- Progress summary (total debt, total paid, percent complete)
+- Clean empty states and inline validation
+
+---
+
+## Out of scope (by design)
+
+These features are intentionally excluded from the MVP:
+
+- User authentication
+- Bank integrations
+- Monthly budgeting
+- Charts and analytics
+- AI recommendations
+- Import/export
+
+The goal is clarity and completion, not feature count.
+
+---
+
+## Running locally
 
 ```bash
+# install dependencies
+npm install
+
+# run dev server
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Set the following environment variable:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```
+DATABASE_URL=your_neon_postgres_url
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+---
 
-## Learn More
+## Screenshots
 
-To learn more about Next.js, take a look at the following resources:
+Captured and saved in `./screenshots`:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- `welcome.png`
+- `dashboard-empty.png`
+- `add-debt.png`
+- `dashboard-with-debts.png`
+- `add-payment.png`
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Embed preview:
 
-## Deploy on Vercel
+```
+![Welcome](./screenshots/welcome.png)
+![Dashboard empty](./screenshots/dashboard-empty.png)
+![Add debt](./screenshots/add-debt.png)
+![Dashboard](./screenshots/dashboard-with-debts.png)
+![Add payment](./screenshots/add-payment.png)
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+---
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Known limitations
+
+- Single-user only
+- No authentication
+- No historical analytics
+- Optimised for clarity, not scale
+
+---
+
+## Why this project exists
+
+This project was built to demonstrate:
+
+- end-to-end product delivery
+- clean backend modelling
+- safe validation and data handling
+- a complete, shippable feature set
+
+It is intentionally small — and intentionally finished.
+
+---
+
+## Final checklist
+
+- README exists and reads calmly
+- `screenshots` folder exists
+- App runs cleanly
+- No TODOs in the UI
+- Errors are human-readable
+- No screen feels dead
+
+When all are checked: stop. Do not add features. This project is complete.

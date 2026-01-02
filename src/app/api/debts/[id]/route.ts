@@ -1,12 +1,14 @@
 import { db } from "@/db";
 import { debtTable } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { NextRequest } from "next/server";
 
-type DebtParams = { params: { id: string } };
+type DebtParams = { params: Promise<{ id: string }> };
 type ParsedId = { debtId: number } | { error: Response };
 
-function parseDebtId(params: DebtParams["params"]): ParsedId {
-  const debtId = Number(params.id);
+// Validate the dynamic segment up front to keep handlers small.
+function parseDebtId(id: string): ParsedId {
+  const debtId = Number(id);
 
   if (Number.isNaN(debtId)) {
     return { error: Response.json({ error: "Invalid debt id" }, { status: 400 }) };
@@ -15,6 +17,7 @@ function parseDebtId(params: DebtParams["params"]): ParsedId {
   return { debtId };
 }
 
+// Shared lookup with derived totals so every handler returns consistent data.
 async function fetchDebt(debtId: number) {
   const debt = await db.query.debtTable.findFirst({
     where: eq(debtTable.id, debtId),
@@ -39,8 +42,9 @@ async function fetchDebt(debtId: number) {
   };
 }
 
-export async function GET(_: Request, { params }: DebtParams) {
-  const parsed = parseDebtId(params);
+export async function GET(_: NextRequest, { params }: DebtParams) {
+  const { id } = await params;
+  const parsed = parseDebtId(id);
   if ("error" in parsed) return parsed.error;
   const debtId = parsed.debtId;
 
@@ -50,14 +54,16 @@ export async function GET(_: Request, { params }: DebtParams) {
   return Response.json(debt.data);
 }
 
-export async function PATCH(request: Request, { params }: DebtParams) {
-  const parsed = parseDebtId(params);
+export async function PATCH(request: NextRequest, { params }: DebtParams) {
+  const { id } = await params;
+  const parsed = parseDebtId(id);
   if ("error" in parsed) return parsed.error;
   const debtId = parsed.debtId;
 
   const body = await request.json();
   const { name, type, balance, interestRate, minimumPayment } = body;
 
+  // Only apply fields that were supplied by the client.
   const updates: Partial<typeof debtTable.$inferInsert> = {};
 
   if (name !== undefined) updates.name = name;
@@ -91,6 +97,7 @@ export async function PATCH(request: Request, { params }: DebtParams) {
 
   updates.updated_at = new Date();
 
+  // Ensure the record exists before updating.
   const existing = await fetchDebt(debtId);
   if (existing.error) return existing.error;
 
@@ -105,8 +112,9 @@ export async function PATCH(request: Request, { params }: DebtParams) {
   return Response.json(updated.data);
 }
 
-export async function DELETE(_: Request, { params }: DebtParams) {
-  const parsed = parseDebtId(params);
+export async function DELETE(_: NextRequest, { params }: DebtParams) {
+  const { id } = await params;
+  const parsed = parseDebtId(id);
   if ("error" in parsed) return parsed.error;
   const debtId = parsed.debtId;
 
@@ -118,5 +126,4 @@ export async function DELETE(_: Request, { params }: DebtParams) {
   return Response.json({ success: true });
 }
 
-// Keep PUT aligned with PATCH semantics for idempotent updates.
 export const PUT = PATCH;
