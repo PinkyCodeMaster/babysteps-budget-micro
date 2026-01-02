@@ -2,145 +2,102 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-const features = [
-  "Add and manage debts with validation",
-  "Record payments safely with overpayment protection",
-  "Snowball ordering by remaining balance",
-  "Clear progress and totals",
+const benefits = [
+  "Track every debt with clear balances and minimums.",
+  "Add payments safely – overpayments are blocked server-side.",
+  "See snowball order so you always know the next target.",
+  "Simple, welcoming states for first-time users.",
 ];
 
-const designPrinciples = [
-  "Finished over fancy - small scope, fully complete",
-  "Derived data - balances come from payments",
-  "Server-first - business logic lives in API routes",
-  "Simple UX - clear states, no dead ends",
-];
-
-const stack = [
-  "Next.js 16 (App Router) and TypeScript",
-  "Drizzle ORM + Neon (Postgres)",
-  "shadcn/ui + Tailwind CSS",
+const reassurance = [
+  "No bank connections or account setup needed.",
+  "Your numbers stay server-side; no duplicate calculations.",
+  "Built for clarity: light/dark modes, friendly copy, fast loads.",
 ];
 
 export default function HomePage() {
   return (
-    <main className="min-h-screen ">
+    <main className="min-h-screen bg-gradient-to-b from-white via-slate-50 to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
       <div className="container mx-auto flex flex-col gap-12 px-6 py-16">
-        <Card className="border-0 shadow-sm backdrop-blur">
-          <CardHeader className="space-y-3">
+        <section className="grid gap-10 lg:grid-cols-2 lg:items-center">
+          <div className="space-y-6">
             <div className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-              Portfolio-ready Next.js app
+              Debt payoff made calm
             </div>
-            <CardTitle className="text-3xl font-bold">
-              BabySteps - a focused debt snowball tracker
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6 text-muted-foreground">
-            <p className="text-lg text-slate-700">
-              Add debts, record payments, and watch your remaining balance drop.
-              No accounts, no bank connections, no noise.
+            <h1 className="text-3xl font-bold leading-tight sm:text-4xl">
+              Stay on top of every debt with a focused dashboard.
+            </h1>
+            <p className="text-lg text-muted-foreground">
+              BabySteps keeps the essentials: add debts, record payments, and follow the
+              snowball order. No distractions, just progress.
             </p>
-
             <div className="flex flex-wrap gap-3">
               <Link href="/dashboard">
-                <Button size="lg">Go to dashboard</Button>
+                <Button size="lg">Open dashboard</Button>
               </Link>
-              <Link href="https://nextjs.org" target="_blank" rel="noreferrer">
+              <Link href="/techstack">
                 <Button variant="outline" size="lg">
-                  View tech stack
+                  See how it’s built
                 </Button>
               </Link>
             </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Card className="h-full border-dashed">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base font-semibold">
-                    What it does
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2 text-sm">
-                  <ul className="list-disc space-y-2 pl-4">
-                    {features.map((item) => (
-                      <li key={item}>{item}</li>
-                    ))}
-                  </ul>
-                </CardContent>
-              </Card>
-
-              <Card className="h-full border-dashed">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base font-semibold">
-                    Design principles
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2 text-sm">
-                  <ul className="list-disc space-y-2 pl-4">
-                    {designPrinciples.map((item) => (
-                      <li key={item}>{item}</li>
-                    ))}
-                  </ul>
-                </CardContent>
-              </Card>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {benefits.map((item) => (
+                <Card key={item} className="border-dashed bg-white/60 dark:bg-slate-900/60">
+                  <CardContent className="p-4 text-sm text-muted-foreground">
+                    {item}
+                  </CardContent>
+                </Card>
+              ))}
             </div>
-          </CardContent>
-        </Card>
-
-        <div className="grid gap-4 md:grid-cols-3">
-          <Card className="border-dashed">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base font-semibold">
-                Core flow
-              </CardTitle>
+          </div>
+          <Card className="border-0 shadow-md bg-white/80 dark:bg-slate-900/80">
+            <CardHeader>
+              <CardTitle className="text-xl">What you’ll see</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2 text-sm text-muted-foreground">
-              <p>Add debts, record payments, and see progress update instantly.</p>
-              <p>Balanced empty states keep first-time users on track.</p>
+            <CardContent className="space-y-3 text-muted-foreground text-sm">
+              <p>Totals for debt and paid-to-date, with percentage progress.</p>
+              <p>Per-debt remaining balances with inline pay/edit/delete actions.</p>
+              <p>Empty states that guide you instead of leaving a blank screen.</p>
+              <p>Light/dark modes built-in.</p>
             </CardContent>
           </Card>
+        </section>
 
+        <section className="grid gap-4 lg:grid-cols-3">
           <Card className="border-dashed">
             <CardHeader className="pb-2">
-              <CardTitle className="text-base font-semibold">
-                Technical stack
-              </CardTitle>
+              <CardTitle className="text-base font-semibold">Built for humans</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 text-sm text-muted-foreground">
-              <ul className="list-disc space-y-2 pl-4">
-                {stack.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
+              {reassurance.map((item) => (
+                <p key={item}>{item}</p>
+              ))}
             </CardContent>
           </Card>
-
           <Card className="border-dashed">
             <CardHeader className="pb-2">
-              <CardTitle className="text-base font-semibold">
-                Scope guardrails
-              </CardTitle>
+              <CardTitle className="text-base font-semibold">Fast to start</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 text-sm text-muted-foreground">
-              <p>No auth, no bank integrations, no charts. Everything else is finished.</p>
-              <p>Validation lives server-side to keep data safe.</p>
+              <ol className="list-decimal space-y-2 pl-5">
+                <li>Add debts with balances and minimums.</li>
+                <li>Record payments as you make them.</li>
+                <li>Follow the snowball order; we sort it for you.</li>
+              </ol>
             </CardContent>
           </Card>
-        </div>
-
-        <Card className="border-dashed">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base font-semibold">
-              How to use
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm text-muted-foreground">
-            <ol className="list-decimal space-y-2 pl-5">
-              <li>Open the dashboard and add your debts with balances and minimums.</li>
-              <li>Record payments as you make them; overpayments are guarded.</li>
-              <li>Follow the snowball order and watch the remaining balance drop.</li>
-            </ol>
-          </CardContent>
-        </Card>
+          <Card className="border-dashed">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base font-semibold">Ready for growth</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm text-muted-foreground">
+              <p>API-first, with server-side validation.</p>
+              <p>Clear layering for future auth and user accounts.</p>
+              <p>Drizzle + Neon for reliable data.</p>
+            </CardContent>
+          </Card>
+        </section>
       </div>
     </main>
   );

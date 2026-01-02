@@ -120,7 +120,7 @@ export function AddDebtForm() {
           />
 
           {error && (
-            <p className="text-sm text-red-500">{error}</p>
+            <p className="text-sm text-red-500" aria-live="polite">{error}</p>
           )}
 
           <Button type="submit" disabled={loading}>

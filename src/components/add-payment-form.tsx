@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { formatCurrency } from "@/lib/format";
 
 type Props = {
   debtId: number;
@@ -56,10 +57,10 @@ export function AddPaymentForm({
       <Input
         name="amount"
         type="number"
-        placeholder="Payment"
+        placeholder={`Payment (max ${formatCurrency(remainingBalance)})`}
         min={1}
         max={remainingBalance}
-        className="w-32"
+        className="w-40"
         required
         disabled={loading}
       />
@@ -69,13 +70,13 @@ export function AddPaymentForm({
       </Button>
 
       {remainingBalance <= 50 && remainingBalance > 0 && (
-        <span className="text-xs text-muted-foreground">
+        <span className="text-xs text-muted-foreground" aria-live="polite">
           Almost there 🎉
         </span>
       )}
 
       {error && (
-        <span className="text-xs text-red-500">
+        <span className="text-xs text-red-500" aria-live="polite">
           {error}
         </span>
       )}

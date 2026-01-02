@@ -51,70 +51,78 @@ export async function GET(_: NextRequest, { params }: { params: Promise<{ id: st
 }
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const parsed = parseDebtId(id);
-  if ("error" in parsed) return parsed.error;
-  const debtId = parsed.debtId;
+  try {
+    const { id } = await params;
+    const parsed = parseDebtId(id);
+    if ("error" in parsed) return parsed.error;
+    const debtId = parsed.debtId;
 
-  const body = await request.json();
-  const { amount, paymentDate } = body;
+    const body = await request.json();
+    const { amount, paymentDate } = body;
 
-  const amountValue = Number(amount);
+    const amountValue = Number(amount);
 
-  if (!Number.isFinite(amountValue) || amountValue <= 0) {
-    return Response.json(
-      { error: "Payment amount must be greater than zero" },
-      { status: 400 }
-    );
-  }
+    if (!Number.isFinite(amountValue) || amountValue <= 0) {
+      return Response.json(
+        { error: "Payment amount must be greater than zero" },
+        { status: 400 }
+      );
+    }
 
-  if (paymentDate && Number.isNaN(Date.parse(paymentDate))) {
-    return Response.json(
-      { error: "Invalid payment date" },
-      { status: 400 }
-    );
-  }
+    if (paymentDate && Number.isNaN(Date.parse(paymentDate))) {
+      return Response.json(
+        { error: "Invalid payment date" },
+        { status: 400 }
+      );
+    }
 
-  // Get the current balance context to enforce overpayment guard.
-  const debt = await fetchDebt(debtId);
-  if (debt.error) return debt.error;
+    // Get the current balance context to enforce overpayment guard.
+    const debt = await fetchDebt(debtId);
+    if (debt.error) return debt.error;
 
-  if (amountValue > debt.remainingBalance) {
-    return Response.json(
-      { error: "Payment exceeds remaining balance" },
-      { status: 400 }
-    );
-  }
+    if (amountValue > debt.remainingBalance) {
+      return Response.json(
+        { error: "Payment exceeds remaining balance" },
+        { status: 400 }
+      );
+    }
 
-  const paymentDateValue =
-    paymentDate ?? new Date().toISOString().split("T")[0];
+    const paymentDateValue =
+      paymentDate ?? new Date().toISOString().split("T")[0];
 
-  const [created] = await db
-    .insert(paymentTable)
-    .values({
-      debtId,
-      amount: amountValue,
-      paymentDate: paymentDateValue,
-    })
-    .returning({
-      id: paymentTable.id,
-      paymentDate: paymentTable.paymentDate,
-    });
-
-  const updatedTotalPaid = debt.totalPaid + amountValue;
-  const updatedRemainingBalance = debt.remainingBalance - amountValue;
-
-  return Response.json(
-    {
-      payment: {
-        id: created.id,
+    const [created] = await db
+      .insert(paymentTable)
+      .values({
         debtId,
         amount: amountValue,
-        paymentDate: created.paymentDate,
+        paymentDate: paymentDateValue,
+      })
+      .returning({
+        id: paymentTable.id,
+        paymentDate: paymentTable.paymentDate,
+      });
+
+    const updatedTotalPaid = debt.totalPaid + amountValue;
+    const updatedRemainingBalance = debt.remainingBalance - amountValue;
+
+    return Response.json(
+      {
+        payment: {
+          id: created.id,
+          debtId,
+          amount: amountValue,
+          paymentDate: created.paymentDate,
+        },
+        totalPaid: updatedTotalPaid,
+        remainingBalance: updatedRemainingBalance,
       },
-      totalPaid: updatedTotalPaid,
-      remainingBalance: updatedRemainingBalance,
-    },
-    { status: 201 }
-  );
+      { status: 201 }
+    );
+  } catch (error) {
+    console.error("POST /api/debts/[id]/payments failed", error);
+    return Response.json(
+      { error: "We couldn't add that payment. Please try again." },
+      { status: 500 }
+    );
+  }
 }
