@@ -1,9 +1,10 @@
-import { ThemeProvider } from "@/components/theme-provider";
+import { ThemeProvider } from "@/components/layouts/theme-provider";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import type { Metadata } from "next";
 import "./globals.css";
-import { SiteHeader } from "@/components/site-header";
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -29,12 +30,11 @@ export default function RootLayout({
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           {/* Global shell: header, theme toggle, gradient wrap, and toaster */}
           <div className="min-h-screen bg-slate-50 text-slate-900 transition-colors dark:bg-slate-950 dark:text-slate-50">
-            <SiteHeader />
-            <div className="bg-linear-to-b from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
-              {children}
-            </div>
+            {children}
             <Toaster />
           </div>
+          <Analytics />
+          <SpeedInsights />
         </ThemeProvider>
       </body>
     </html>

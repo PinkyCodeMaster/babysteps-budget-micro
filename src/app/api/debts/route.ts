@@ -1,27 +1,17 @@
 import { db } from "@/db";
 import { debtTable } from "@/db/schema";
-
-type SortKey = "snowball" | "low-high" | "high-low";
-
-function sortDebts(
-  debts: {
-    remainingBalance: number;
-    balance: number;
-  }[],
-  order: SortKey
-) {
-  if (order === "low-high") {
-    return debts.sort((a, b) => a.remainingBalance - b.remainingBalance);
-  }
-  if (order === "high-low") {
-    return debts.sort((a, b) => b.remainingBalance - a.remainingBalance);
-  }
-  // default snowball: smallest remaining first
-  return debts.sort((a, b) => a.remainingBalance - b.remainingBalance);
-}
+import { SortKey, sortDebts, calculateProgress } from "@/lib/debt-logic";
+import { auth } from "@/lib/auth";
+import { headers } from "next/headers";
+import { eq } from "drizzle-orm";
 
 // Lists debts with derived totals (remaining + paid) and optional sorting.
 export async function GET(request: Request) {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const url = new URL(request.url);
   const sortParam = (url.searchParams.get("sort") as SortKey | null) ?? "snowball";
   const sortKey: SortKey = ["low-high", "high-low", "snowball"].includes(sortParam)
@@ -32,6 +22,7 @@ export async function GET(request: Request) {
     with: {
       payments: true,
     },
+    where: eq(debtTable.userId, session.user.id),
   });
 
   // Derive totals per debt from payment rows rather than storing duplicates.
@@ -65,9 +56,7 @@ export async function GET(request: Request) {
   );
 
   const progressPercent =
-    totalDebt === 0
-      ? 0
-      : Math.round((totalPaid / totalDebt) * 100);
+    calculateProgress(totalDebt, totalPaid);
 
   return Response.json({
     summary: {
@@ -81,6 +70,12 @@ export async function GET(request: Request) {
 
 // Creates a debt; numeric fields validated server-side.
 export async function POST(request: Request) {
+    const session = await auth.api.getSession({ headers: await headers() });
+
+    if (!session) {
+        return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     try {
         const body = await request.json();
 
@@ -96,7 +91,7 @@ export async function POST(request: Request) {
 
         const [created] = await db
             .insert(debtTable)
-            .values({ name, type, balance, interestRate, minimumPayment, })
+            .values({ name, type, balance, interestRate, minimumPayment, userId: session.user.id })
             .returning({ id: debtTable.id });
 
         return Response.json({ id: created.id }, { status: 201 });

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { AddDebtForm } from "@/components/add-debt-form";
+import { AddDebtForm } from "@/components/dashboard/add-debt-form";
 
 // Client wrapper to hide the add form until the user opts in.
 export function AddDebtPanel() {

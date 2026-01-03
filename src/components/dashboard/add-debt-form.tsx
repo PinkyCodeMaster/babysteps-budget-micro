@@ -88,8 +88,41 @@ export function AddDebtForm() {
               <SelectItem value="loan">
                 Loan
               </SelectItem>
+              <SelectItem value="mortgage">
+                Mortgage
+              </SelectItem>
+              <SelectItem value="car_finance">
+                Car Finance / HP
+              </SelectItem>
+              <SelectItem value="overdraft">
+                Overdraft
+              </SelectItem>
+              <SelectItem value="payday">
+                Payday
+              </SelectItem>
+              <SelectItem value="utility_arrears">
+                Utility Arrears
+              </SelectItem>
+              <SelectItem value="council_tax">
+                Council Tax
+              </SelectItem>
+              <SelectItem value="tax_arrears">
+                Tax Arrears
+              </SelectItem>
+              <SelectItem value="student_loan">
+                Student Loan
+              </SelectItem>
+              <SelectItem value="store_card">
+                Store Card
+              </SelectItem>
+              <SelectItem value="hire_purchase">
+                Hire Purchase
+              </SelectItem>
               <SelectItem value="ccj">
                 CCJ
+              </SelectItem>
+              <SelectItem value="other">
+                Other
               </SelectItem>
             </SelectContent>
           </Select>

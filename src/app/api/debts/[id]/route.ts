@@ -1,7 +1,9 @@
 import { db } from "@/db";
 import { debtTable } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { NextRequest } from "next/server";
+import { auth } from "@/lib/auth";
+import { headers } from "next/headers";
 
 type DebtParams = { params: Promise<{ id: string }> };
 type ParsedId = { debtId: number } | { error: Response };
@@ -18,9 +20,9 @@ function parseDebtId(id: string): ParsedId {
 }
 
 // Shared lookup with derived totals so every handler returns consistent data.
-async function fetchDebt(debtId: number) {
+async function fetchDebt(debtId: number, userId: string) {
   const debt = await db.query.debtTable.findFirst({
-    where: eq(debtTable.id, debtId),
+    where: and(eq(debtTable.id, debtId), eq(debtTable.userId, userId)),
     with: {
       payments: true,
     },
@@ -43,18 +45,24 @@ async function fetchDebt(debtId: number) {
 }
 
 export async function GET(_: NextRequest, { params }: DebtParams) {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) return Response.json({ error: "Unauthorized" }, { status: 401 });
+
   const { id } = await params;
   const parsed = parseDebtId(id);
   if ("error" in parsed) return parsed.error;
   const debtId = parsed.debtId;
 
-  const debt = await fetchDebt(debtId);
+  const debt = await fetchDebt(debtId, session.user.id);
   if (debt.error) return debt.error;
 
   return Response.json(debt.data);
 }
 
 export async function PATCH(request: NextRequest, { params }: DebtParams) {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) return Response.json({ error: "Unauthorized" }, { status: 401 });
+
   const { id } = await params;
   const parsed = parseDebtId(id);
   if ("error" in parsed) return parsed.error;
@@ -98,30 +106,35 @@ export async function PATCH(request: NextRequest, { params }: DebtParams) {
   updates.updated_at = new Date();
 
   // Ensure the record exists before updating.
-  const existing = await fetchDebt(debtId);
+  const existing = await fetchDebt(debtId, session.user.id);
   if (existing.error) return existing.error;
 
   await db
     .update(debtTable)
     .set(updates)
-    .where(eq(debtTable.id, debtId));
+    .where(and(eq(debtTable.id, debtId), eq(debtTable.userId, session.user.id)));
 
-  const updated = await fetchDebt(debtId);
+  const updated = await fetchDebt(debtId, session.user.id);
   if (updated.error) return updated.error;
 
   return Response.json(updated.data);
 }
 
 export async function DELETE(_: NextRequest, { params }: DebtParams) {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) return Response.json({ error: "Unauthorized" }, { status: 401 });
+
   const { id } = await params;
   const parsed = parseDebtId(id);
   if ("error" in parsed) return parsed.error;
   const debtId = parsed.debtId;
 
-  const existing = await fetchDebt(debtId);
+  const existing = await fetchDebt(debtId, session.user.id);
   if (existing.error) return existing.error;
 
-  await db.delete(debtTable).where(eq(debtTable.id, debtId));
+  await db
+    .delete(debtTable)
+    .where(and(eq(debtTable.id, debtId), eq(debtTable.userId, session.user.id)));
 
   return Response.json({ success: true });
 }

@@ -1,7 +1,9 @@
 import { db } from "@/db";
 import { debtTable, paymentTable } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { NextRequest } from "next/server";
+import { auth } from "@/lib/auth";
+import { headers } from "next/headers";
 
 type ParsedId = { debtId: number } | { error: Response };
 
@@ -16,9 +18,9 @@ function parseDebtId(id: string): ParsedId {
 }
 
 // Fetch debt with payments and derive totals to simplify handler logic.
-async function fetchDebt(debtId: number) {
+async function fetchDebt(debtId: number, userId: string) {
   const debt = await db.query.debtTable.findFirst({
-    where: eq(debtTable.id, debtId),
+    where: and(eq(debtTable.id, debtId), eq(debtTable.userId, userId)),
     with: {
       payments: true,
     },
@@ -35,12 +37,15 @@ async function fetchDebt(debtId: number) {
 }
 
 export async function GET(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) return Response.json({ error: "Unauthorized" }, { status: 401 });
+
   const { id } = await params;
   const parsed = parseDebtId(id);
   if ("error" in parsed) return parsed.error;
   const debtId = parsed.debtId;
 
-  const debt = await fetchDebt(debtId);
+  const debt = await fetchDebt(debtId, session.user.id);
   if (debt.error) return debt.error;
 
   return Response.json({
@@ -52,6 +57,9 @@ export async function GET(_: NextRequest, { params }: { params: Promise<{ id: st
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const session = await auth.api.getSession({ headers: await headers() });
+    if (!session) return Response.json({ error: "Unauthorized" }, { status: 401 });
+
     const { id } = await params;
     const parsed = parseDebtId(id);
     if ("error" in parsed) return parsed.error;
@@ -77,7 +85,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
 
     // Get the current balance context to enforce overpayment guard.
-    const debt = await fetchDebt(debtId);
+    const debt = await fetchDebt(debtId, session.user.id);
     if (debt.error) return debt.error;
 
     if (amountValue > debt.remainingBalance) {
