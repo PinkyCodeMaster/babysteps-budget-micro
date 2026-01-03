@@ -11,6 +11,7 @@ import { db } from "@/db";
 import { expenseTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { formatCurrency } from "@/lib/format";
+import { EditExpenseForm } from "@/components/dashboard/edit-expense-form";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { eq, desc } from "drizzle-orm";
@@ -155,6 +156,9 @@ export default async function ExpensesPage() {
                             </Badge>
                           </div>
                         </CardHeader>
+                        <CardContent className="grid gap-2 text-sm text-muted-foreground">
+                          <EditExpenseForm expense={expense} />
+                        </CardContent>
                       </Card>
                     ))}
                   </div>

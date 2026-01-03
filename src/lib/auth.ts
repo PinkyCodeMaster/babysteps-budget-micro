@@ -22,7 +22,7 @@ export const auth = betterAuth({
         onPasswordReset: async ({ user }) => {
             console.log(`Password reset for ${user.email}`);
         },
-        sendResetPassword: async ({ user, url, token }) => {
+        sendResetPassword: async ({ user, url }) => {
             const email = await buildResetPasswordEmail(url);
             void sendMail({
                 to: user.email,
@@ -34,7 +34,7 @@ export const auth = betterAuth({
     },
     emailVerification: {
         autoSignInAfterVerification: true,
-        sendVerificationEmail: async ({ user, url, token }) => {
+        sendVerificationEmail: async ({ user, url }) => {
             const email = await buildVerifyEmail(url);
             void sendMail({
                 to: user.email,
@@ -43,7 +43,7 @@ export const auth = betterAuth({
                 html: email.html,
             }).catch((err) => console.error("send verification email failed", err));
         },
-        afterEmailVerification: async (user, request) => {
+        afterEmailVerification: async (user) => {
             const email = await buildWelcomeEmail("https://localhost:3000/dashboard");
             void sendMail({
                 to: user.email,

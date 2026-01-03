@@ -5,7 +5,7 @@ import { incomeTable } from "@/db/schema";
 import { estimateNetMonthly, calculateUcPayment, type IncomeType } from "@/lib/income-logic";
 import { eq } from "drizzle-orm";
 
-export async function GET(_request: Request) {
+export async function GET() {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return Response.json({ error: "Unauthorized" }, { status: 401 });
 

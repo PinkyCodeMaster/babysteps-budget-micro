@@ -19,11 +19,11 @@ import {
 
 type SectionCardsProps = {
   remainingTotal: string;
-  totalPaid: string;
   paidThisMonth: string;
   nextDebtName?: string;
   nextDebtRemaining?: string;
   progressLabel: string;
+  totalPaid?: string;
   monthlyIncome?: string;
   ucPayment?: string;
   householdIncome?: string;
@@ -34,11 +34,11 @@ type SectionCardsProps = {
 
 export function SectionCards({
   remainingTotal,
-  totalPaid,
   paidThisMonth,
   nextDebtName,
   nextDebtRemaining,
   progressLabel,
+  totalPaid,
   monthlyIncome,
   ucPayment,
   householdIncome,
@@ -63,6 +63,18 @@ export function SectionCards({
       meta: "Strong repayment month",
       sub: "Totals across all payments this month",
     },
+    ...(totalPaid
+      ? [
+          {
+            title: "Paid to Date",
+            value: totalPaid,
+            badge: "Lifetime",
+            Icon: IconWallet,
+            meta: "Cumulative payments",
+            sub: "Across all debts",
+          },
+        ]
+      : []),
     {
       title: "Next Debt (Snowball)",
       value: nextDebtName ?? "All paid",

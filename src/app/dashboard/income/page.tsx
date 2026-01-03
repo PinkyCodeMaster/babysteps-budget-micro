@@ -16,6 +16,7 @@ import {
 } from "@/lib/income-logic";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { EditIncomeForm } from "@/components/dashboard/edit-income-form";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
@@ -188,6 +189,9 @@ export default async function IncomePage() {
                               </span>
                             </div>
                           )}
+                          <div className="pt-1">
+                            <EditIncomeForm income={income} />
+                          </div>
                         </CardContent>
                       </Card>
                     ))}

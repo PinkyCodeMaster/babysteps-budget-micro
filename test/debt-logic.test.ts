@@ -1,6 +1,6 @@
 import assert from "node:assert";
 import test from "node:test";
-import { calculateProgress, sortDebts, type SortKey } from "@/lib/debt-logic";
+import { calculateProgress, sortDebts } from "@/lib/debt-logic";
 
 const sample = [
   { id: 1, remainingBalance: 500, balance: 1000 },

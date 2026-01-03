@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/sidebar";
 import { authClient } from "@/lib/auth-client";
 import { redirect } from "next/navigation";
+import Link from "next/link";
 
 const navMain = [
   {
@@ -87,10 +88,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               asChild
               className="data-[slot=sidebar-menu-button]:p-1.5!"
             >
-              <a href="/">
+              <Link href="/">
                 <IconInnerShadowTop className="size-5!" />
                 <span className="text-base font-semibold">Baby Steps.</span>
-              </a>
+              </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

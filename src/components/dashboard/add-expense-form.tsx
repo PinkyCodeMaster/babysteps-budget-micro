@@ -36,7 +36,6 @@ export function AddExpenseForm() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [type, setType] = useState<ExpenseType>("housing");
 
   async function onSubmit(formData: FormData) {
     setLoading(true);
@@ -90,7 +89,6 @@ export function AddExpenseForm() {
             required
             disabled={loading}
             defaultValue="housing"
-            onValueChange={(v) => setType(v as ExpenseType)}
           >
             <SelectTrigger>
               <SelectValue placeholder="Expense type" />
