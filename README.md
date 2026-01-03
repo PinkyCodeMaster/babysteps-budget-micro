@@ -1,64 +1,60 @@
-# BabySteps - Budget Micro
+# BabySteps – Budget Micro
 
-A minimal budgeting and debt-snowball tracker built as a finished, portfolio-ready project.
+A minimal budgeting, income, and debt-snowball tracker that is production-ready, not a demo.
 
-This app focuses on the core personal-finance flow: add debts -> record payments -> track progress, without over-engineering.
+Flow: add debts → record payments → add incomes → track progress and monthly cash.
 
 ---
 
 ## What it does
 
-- Add and manage debts (credit cards, loans, CCJs)
-- Record payments safely with validation
-- Automatically calculate remaining balances
-- Sort debts using the debt snowball method
-- Show clear progress and totals
+- Add and manage debts (cards, loans, finance, arrears, CCJs, more)
+- Record payments with overpayment protection
+- Add income sources (hourly, net monthly, gross yearly, UC)
+- Estimate take-home + UC taper to show household cash
+- Snowball ordering and clear payoff progress
+- Email-based auth with verification, reset, welcome flows
 
-No accounts. No bank connections. No noise.
+No bank connections. No fluff.
 
 ---
 
 ## Design principles
 
-- Finished over fancy - small scope, fully complete
-- Derived data - balances are calculated from payments, not duplicated
-- Server-first - backend logic lives in API routes
-- Simple UX - clear states, no dead ends
+- Finished over fancy — small scope, fully complete
+- Derived data — balances & income outputs are calculated, not duplicated
+- Server-first — backend logic lives in API routes
+- Simple UX — clear states, no dead ends
 
 ---
 
 ## Tech stack
 
 - Next.js 16 (App Router) + TypeScript
-- Drizzle ORM
-- Neon (Postgres)
-- shadcn/ui
-- Tailwind CSS
+- Drizzle ORM (Postgres via Neon)
+- better-auth + mailer (Mailpit locally)
+- shadcn/ui + Tailwind CSS
 
 ---
 
 ## Core features
 
-- Debt CRUD (create, update, delete)
-- Payment tracking with overpayment protection
-- Snowball ordering by remaining balance
-- Progress summary (total debt, total paid, percent complete)
-- Clean empty states and inline validation
+- Debts: create, edit, delete; validate payments against remaining balance
+- Payments: snowball sorting (high/low/snowball), monthly paid tracker
+- Income: hourly / net monthly / gross yearly / UC; take-home estimation; UC taper calc
+- Expenses: monthly categories with totals and net cashflow
+- Auth: email sign-up, verification, sign-in, reset password (no social yet)
+- UX: empty states, loading states, inline errors, mobile-friendly nav
 
 ---
 
 ## Out of scope (by design)
 
-These features are intentionally excluded from the MVP:
-
-- User authentication
 - Bank integrations
-- Monthly budgeting
-- Charts and analytics
+- Full budgeting categories (coming later)
+- Charts/analytics dashboards
 - AI recommendations
 - Import/export
-
-The goal is clarity and completion, not feature count.
 
 ---
 
@@ -72,11 +68,26 @@ npm install
 npm run dev
 ```
 
-Set the following environment variable:
+Environment variables (`.env` or export):
 
 ```
 DATABASE_URL=your_neon_postgres_url
+MAILPIT_HOST=127.0.0.1
+MAILPIT_PORT=1025
+MAIL_FROM="BabySteps <no-reply@babysteps.test>"
+BETTER_AUTH_URL=http://localhost:3000
+BETTER_AUTH_SECRET=your_random_secret
+
+# Income taper (optional, defaults shown)
+UC_BASE_MONTHLY=0
+UC_TAPER_DISREGARD=411
+UC_TAPER_RATE=0.55
 ```
+
+Utilities:
+
+- Seed demo data for the test user: `npm run seed:test`
+- Run tests (non-auth): `npm test`
 
 ---
 
@@ -104,9 +115,8 @@ Embed preview:
 
 ## Known limitations
 
-- Single-user only
-- No authentication
-- No historical analytics
+- No social login yet (email flows only)
+- No historical analytics/graphs yet
 - Optimised for clarity, not scale
 
 ---

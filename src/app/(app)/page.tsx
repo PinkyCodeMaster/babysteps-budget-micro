@@ -17,7 +17,7 @@ const reassurance = [
 
 export default function HomePage() {
   return (
-    <main className="min-h-screen bg-gradient-to-b from-white via-slate-50 to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+    <main className="min-h-screen bg-linear-to-b from-white via-slate-50 to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
       <div className="container mx-auto flex flex-col gap-12 px-6 py-16">
         <section className="grid gap-10 lg:grid-cols-2 lg:items-center">
           <div className="space-y-6">

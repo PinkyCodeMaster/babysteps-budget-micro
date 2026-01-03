@@ -10,10 +10,11 @@ import { AddPaymentForm } from "@/components/dashboard/add-payment-form";
 import { DeleteDebtButton } from "@/components/dashboard/delete-debt-button";
 import { EditDebtForm } from "@/components/dashboard/edit-debt-form";
 import { auth } from "@/lib/auth";
+import { estimateNetMonthly, calculateUcPayment, type IncomeType } from "@/lib/income-logic";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { db } from "@/db";
-import { debtTable } from "@/db/schema";
+import { debtTable, incomeTable, expenseTable } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { formatCurrency } from "@/lib/format";
 import { sortDebts, calculateProgress, SortKey } from "@/lib/debt-logic";
@@ -32,14 +33,37 @@ type Debt = {
 
 type DebtWithTotals = Debt & { totalPaid: number };
 
+type Income = {
+  id: number;
+  name: string;
+  type: IncomeType;
+  amount: number;
+  hoursPerWeek: number | null;
+  netMonthly: number;
+};
+
+type Expense = {
+  id: number;
+  name: string;
+  type: string;
+  amount: number;
+};
+
 type DashboardData = {
   summary: {
     totalDebt: number;
     totalPaid: number;
     paidThisMonth: number;
     progressPercent: number;
+    monthlyIncome: number;
+    ucPayment: number;
+    householdIncome: number;
+    monthlyExpenses: number;
+    netCashflow: number;
   };
   debts: DebtWithTotals[];
+  incomes: Income[];
+  expenses: Expense[];
 };
 
 async function loadDashboardData(sort: SortKey): Promise<DashboardData> {
@@ -52,6 +76,36 @@ async function loadDashboardData(sort: SortKey): Promise<DashboardData> {
     with: { payments: true },
     where: eq(debtTable.userId, session!.user.id),
   });
+
+  const incomesRaw = await db.query.incomeTable.findMany({
+    where: eq(incomeTable.userId, session!.user.id),
+  });
+
+  const incomes: Income[] = incomesRaw.map((income) => ({
+    ...income,
+    netMonthly: estimateNetMonthly({
+      type: income.type as IncomeType,
+      amount: income.amount,
+      hoursPerWeek: income.hoursPerWeek,
+    }),
+  }));
+
+  const monthlyIncome = incomes.reduce((sum, inc) => sum + inc.netMonthly, 0);
+  const ucBase = Number(process.env.UC_BASE_MONTHLY ?? 0);
+  const taperIgnore = Number(process.env.UC_TAPER_DISREGARD ?? 411);
+  const taperRate = Number(process.env.UC_TAPER_RATE ?? 0.55);
+  const ucPayment = calculateUcPayment({
+    incomes,
+    base: ucBase,
+    taperIgnore,
+    taperRate,
+  });
+  const householdIncome = monthlyIncome + ucPayment;
+  const expenses = await db.query.expenseTable.findMany({
+    where: eq(expenseTable.userId, session!.user.id),
+  });
+  const monthlyExpenses = expenses.reduce((sum, exp) => sum + exp.amount, 0);
+  const netCashflow = householdIncome - monthlyExpenses;
 
   const enriched: DebtWithTotals[] = debts.map((debt) => {
     const totalPaid = debt.payments.reduce((sum, p) => sum + p.amount, 0);
@@ -89,12 +143,19 @@ async function loadDashboardData(sort: SortKey): Promise<DashboardData> {
       totalPaid,
       paidThisMonth,
       progressPercent,
+      monthlyIncome,
+      ucPayment,
+      householdIncome,
+      monthlyExpenses,
+      netCashflow,
     },
     debts: sortedDebts,
+    incomes,
+    expenses,
   };
 }
 
-export default async function Page({
+export default async function DashboardPage({
   searchParams,
 }: {
   searchParams: Promise<{ sort?: string }>;
@@ -107,6 +168,9 @@ export default async function Page({
 
   const data = await loadDashboardData(sortKey);
   const nextDebt = data.debts[0];
+
+  const totalMinimums = data.debts.reduce((sum, d) => sum + d.minimumPayment, 0);
+  const snowballAvailable = Math.max(0, data.summary.netCashflow - totalMinimums);
 
   return (
     <SidebarProvider
@@ -130,6 +194,12 @@ export default async function Page({
                 nextDebtName={nextDebt ? nextDebt.name : undefined}
                 nextDebtRemaining={nextDebt ? formatCurrency(nextDebt.remainingBalance) : undefined}
                 progressLabel={`${data.summary.progressPercent}%`}
+                monthlyIncome={formatCurrency(data.summary.monthlyIncome)}
+                ucPayment={formatCurrency(data.summary.ucPayment)}
+                householdIncome={formatCurrency(data.summary.householdIncome)}
+                monthlyExpenses={formatCurrency(data.summary.monthlyExpenses)}
+                netCashflow={formatCurrency(data.summary.netCashflow)}
+                snowballAvailable={formatCurrency(snowballAvailable)}
               />
               <div className="px-4 lg:px-6 space-y-4">
                 <AddDebtPanel />

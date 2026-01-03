@@ -3,6 +3,7 @@ import { debtTable } from "./debts";
 import { paymentTable } from "./payments";
 import { user } from "../schema/auth";
 import { incomeTable } from "./incomes";
+import { expenseTable } from "./expenses";
 
 export const debtRelations = relations(debtTable, ({ many }) => ({
   payments: many(paymentTable),
@@ -21,4 +22,8 @@ export const userDebtRelations = relations(user, ({ many }) => ({
 
 export const userIncomeRelations = relations(user, ({ many }) => ({
   incomes: many(incomeTable),
+}));
+
+export const userExpenseRelations = relations(user, ({ many }) => ({
+  expenses: many(expenseTable),
 }));
