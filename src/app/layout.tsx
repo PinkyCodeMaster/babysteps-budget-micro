@@ -5,6 +5,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { CookieBanner } from "@/components/cookie-banner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -29,9 +30,13 @@ export default function RootLayout({
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           {/* Global shell: header, theme toggle, gradient wrap, and toaster */}
-          <div className="min-h-screen bg-slate-50 text-slate-900 transition-colors dark:bg-slate-950 dark:text-slate-50">
-            {children}
+          <div className="min-h-screen bg-background text-foreground transition-colors">
+            <div className="flex min-h-screen flex-col">
+              <div className="flex-1">{children}</div>
+           
+            </div>
             <Toaster />
+            <CookieBanner />
           </div>
           <Analytics />
           <SpeedInsights />

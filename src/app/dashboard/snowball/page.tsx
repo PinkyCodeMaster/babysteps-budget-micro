@@ -7,6 +7,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AddPaymentForm } from "@/components/dashboard/add-payment-form";
+import { DebtsVisuals } from "@/components/dashboard/debts-visuals";
 import { DeleteDebtButton } from "@/components/dashboard/delete-debt-button";
 import { EditDebtForm } from "@/components/dashboard/edit-debt-form";
 import { auth } from "@/lib/auth";
@@ -57,8 +58,11 @@ async function loadSnowball(sort: SortKey) {
     }),
   }));
 
-  const monthlyIncome = incomes.reduce((sum, inc) => sum + inc.netMonthly, 0);
-  const ucBase = Number(process.env.UC_BASE_MONTHLY ?? 0);
+  const ucCandidate =
+    incomes.find((inc) => inc.type === "uc") ||
+    incomes.find((inc) => inc.name.toLowerCase().includes("universal"));
+
+  const ucBase = ucCandidate ? ucCandidate.netMonthly : Number(process.env.UC_BASE_MONTHLY ?? 0);
   const taperIgnore = Number(process.env.UC_TAPER_DISREGARD ?? 411);
   const taperRate = Number(process.env.UC_TAPER_RATE ?? 0.55);
   const ucPayment = calculateUcPayment({
@@ -67,6 +71,10 @@ async function loadSnowball(sort: SortKey) {
     taperIgnore,
     taperRate,
   });
+  const incomesWithoutUc = incomes.filter(
+    (inc) => inc !== ucCandidate && inc.type !== "uc"
+  );
+  const monthlyIncome = incomesWithoutUc.reduce((sum, inc) => sum + inc.netMonthly, 0);
   const householdIncome = monthlyIncome + ucPayment;
   const monthlyExpenses = expenses.reduce((sum, exp) => sum + exp.amount, 0);
 
@@ -151,7 +159,7 @@ export default async function SnowballPage({
                       {formatCurrency(data.summary.netCashflow)}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Income + UC minus monthly expenses.
+                      Income plus UC minus monthly expenses. If it dips one month, that is okay - we will adjust.
                     </p>
                   </CardContent>
                 </Card>
@@ -166,7 +174,7 @@ export default async function SnowballPage({
                       {formatCurrency(data.summary.totalMinimums)}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Sum of minimums across active debts.
+                      Sum of minimums across active debts. We keep these handy for you.
                     </p>
                   </CardContent>
                 </Card>
@@ -181,7 +189,7 @@ export default async function SnowballPage({
                       {formatCurrency(data.summary.snowballAvailable)}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Net cashflow minus minimums.
+                      Net cashflow minus minimums. Apply what you can; pausing is fine.
                     </p>
                   </CardContent>
                 </Card>
@@ -212,14 +220,23 @@ export default async function SnowballPage({
                 )}
               </div>
 
+              <DebtsVisuals
+                debts={data.debts}
+                summary={{
+                  snowballAvailable: data.summary.snowballAvailable,
+                  totalPaid: data.summary.totalPaid,
+                  totalDebt: data.summary.totalDebt,
+                }}
+              />
+
               <div className="px-4 lg:px-6 space-y-4">
                 {data.debts.length === 0 && (
                   <p className="text-sm text-muted-foreground">
-                    No debts yet. Add one to get your snowball plan.
+                    Add your first debt when you are ready - we will build the snowball plan for you.
                   </p>
                 )}
                 {data.debts.map((debt, idx) => (
-                  <Card key={debt.id} className="bg-card/50">
+                  <Card key={debt.id} className="border border-border/70 bg-card/80 shadow-sm shadow-primary/5 backdrop-blur">
                     <CardHeader className="pb-3">
                       <div className="flex items-start justify-between gap-3">
                         <div className="space-y-1">
@@ -230,7 +247,7 @@ export default async function SnowballPage({
                             </CardTitle>
                           </div>
                           <p className="text-sm text-muted-foreground">
-                            Remaining {formatCurrency(debt.remainingBalance)} · Minimum{" "}
+                            Remaining {formatCurrency(debt.remainingBalance)} - Minimum{" "}
                             {formatCurrency(debt.minimumPayment)}
                           </p>
                         </div>
@@ -243,8 +260,8 @@ export default async function SnowballPage({
                     <CardContent className="space-y-3">
                       {idx === 0 && data.summary.snowballAvailable > 0 && (
                         <p className="text-sm text-muted-foreground">
-                          Apply your snowball extra of{" "}
-                          {formatCurrency(data.summary.snowballAvailable)} here first.
+                          Apply your snowball extra of {formatCurrency(data.summary.snowballAvailable)} here first. If you
+                          need to pause, just pick back up later.
                         </p>
                       )}
                       {debt.remainingBalance > 0 && (

@@ -1,4 +1,4 @@
-import { integer, pgEnum, pgTable, timestamp, varchar } from "drizzle-orm/pg-core";
+import { boolean, integer, pgEnum, pgTable, timestamp, varchar } from "drizzle-orm/pg-core";
 import { user } from "./auth";
 
 export const expenseTypeEnum = pgEnum("expense_type", [
@@ -14,6 +14,50 @@ export const expenseTypeEnum = pgEnum("expense_type", [
   "entertainment",
   "savings",
   "other",
+  "rent",
+  "service_charge",
+  "council_tax",
+  "gas",
+  "electric",
+  "water",
+  "car_fuel",
+  "groceries",
+  "phone",
+  "internet",
+]);
+
+export const expenseCategoryEnum = pgEnum("expense_category", [
+  "rent",
+  "service_charge",
+  "council_tax",
+  "gas",
+  "electric",
+  "water",
+  "car_fuel",
+  "groceries",
+  "phone",
+  "internet",
+  "housing",
+  "utilities",
+  "transport",
+  "food",
+  "childcare",
+  "insurance",
+  "subscriptions",
+  "medical",
+  "education",
+  "entertainment",
+  "savings",
+  "other",
+]);
+
+export const expenseFrequencyEnum = pgEnum("expense_frequency", [
+  "weekly",
+  "fortnightly",
+  "four_weekly",
+  "monthly",
+  "quarterly",
+  "yearly",
 ]);
 
 export const expenseTable = pgTable("expenses", {
@@ -29,6 +73,14 @@ export const expenseTable = pgTable("expenses", {
 
   // Stored as monthly net cost
   amount: integer().notNull(),
+
+  category: expenseCategoryEnum().default("other").notNull(),
+
+  frequency: expenseFrequencyEnum().default("monthly").notNull(),
+
+  paymentDay: integer(),
+
+  paidByUc: boolean().default(false).notNull(),
 
   created_at: timestamp().defaultNow().notNull(),
   updated_at: timestamp(),

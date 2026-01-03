@@ -35,6 +35,8 @@ export function AddDebtForm() {
       balance: Number(formData.get("balance")),
       interestRate: Number(formData.get("interestRate")) || 0,
       minimumPayment: Number(formData.get("minimumPayment")),
+      frequency: formData.get("frequency"),
+      dueDay: Number(formData.get("dueDay")) || undefined,
     };
 
     const res = await fetch("/api/debts", {
@@ -85,6 +87,9 @@ export function AddDebtForm() {
               <SelectItem value="credit_card">
                 Credit Card
               </SelectItem>
+              <SelectItem value="personal_loan">
+                Personal Loan
+              </SelectItem>
               <SelectItem value="loan">
                 Loan
               </SelectItem>
@@ -118,6 +123,12 @@ export function AddDebtForm() {
               <SelectItem value="hire_purchase">
                 Hire Purchase
               </SelectItem>
+              <SelectItem value="old_phone_bill">Old Phone Bill</SelectItem>
+              <SelectItem value="rent_arrears">Rent Arrears</SelectItem>
+              <SelectItem value="gas_arrears">Gas Arrears</SelectItem>
+              <SelectItem value="electric_arrears">Electric Arrears</SelectItem>
+              <SelectItem value="water_arrears">Water Arrears</SelectItem>
+              <SelectItem value="income_tax_arrears">Income Tax Arrears</SelectItem>
               <SelectItem value="ccj">
                 CCJ
               </SelectItem>
@@ -149,6 +160,29 @@ export function AddDebtForm() {
             placeholder="Minimum payment"
             required
             min={1}
+            disabled={loading}
+          />
+
+          <Select name="frequency" required disabled={loading} defaultValue="monthly">
+            <SelectTrigger>
+              <SelectValue placeholder="Payment frequency" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="weekly">Weekly</SelectItem>
+              <SelectItem value="fortnightly">Fortnightly</SelectItem>
+              <SelectItem value="four_weekly">Four-weekly</SelectItem>
+              <SelectItem value="monthly">Monthly</SelectItem>
+              <SelectItem value="quarterly">Quarterly</SelectItem>
+              <SelectItem value="yearly">Yearly</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Input
+            name="dueDay"
+            type="number"
+            placeholder="Due day (1-31, optional)"
+            min={1}
+            max={31}
             disabled={loading}
           />
 

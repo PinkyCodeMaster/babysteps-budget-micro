@@ -30,11 +30,11 @@ export function DeleteDebtButton({ debtId }: Props) {
   if (!confirming) {
     return (
       <Button
-        variant="destructive"
+        variant="secondary"
         size="sm"
         onClick={() => setConfirming(true)}
       >
-        Delete
+        Remove
       </Button>
     );
   }
@@ -47,7 +47,7 @@ export function DeleteDebtButton({ debtId }: Props) {
         onClick={handleDelete}
         disabled={loading}
       >
-        {loading ? "Deleting..." : "Confirm"}
+        {loading ? "Removing..." : "Confirm"}
       </Button>
       <Button
         variant="ghost"

@@ -59,9 +59,13 @@ export function calculateUcPayment({
   taperIgnore?: number;
   taperRate?: number;
 }) {
+  const declaredUc = incomes.find((inc) => inc.type === "uc");
+  const effectiveBase = declaredUc ? declaredUc.netMonthly : base;
+
   const takeHome = incomes
     .filter((inc) => inc.type !== "uc")
     .reduce((sum, inc) => sum + inc.netMonthly, 0);
+
   const deduction = Math.max(0, (takeHome - taperIgnore) * taperRate);
-  return Math.max(0, base - deduction);
+  return Math.max(0, effectiveBase - deduction);
 }

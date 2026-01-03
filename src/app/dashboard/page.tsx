@@ -9,6 +9,7 @@ import { AddDebtPanel } from "@/components/dashboard/add-debt-panel";
 import { AddPaymentForm } from "@/components/dashboard/add-payment-form";
 import { DeleteDebtButton } from "@/components/dashboard/delete-debt-button";
 import { EditDebtForm } from "@/components/dashboard/edit-debt-form";
+import { DashboardVisuals } from "@/components/dashboard/dashboard-visuals";
 import { auth } from "@/lib/auth";
 import { estimateNetMonthly, calculateUcPayment, type IncomeType } from "@/lib/income-logic";
 import { headers } from "next/headers";
@@ -90,8 +91,11 @@ async function loadDashboardData(sort: SortKey): Promise<DashboardData> {
     }),
   }));
 
-  const monthlyIncome = incomes.reduce((sum, inc) => sum + inc.netMonthly, 0);
-  const ucBase = Number(process.env.UC_BASE_MONTHLY ?? 0);
+  const ucCandidate =
+    incomes.find((inc) => inc.type === "uc") ||
+    incomes.find((inc) => inc.name.toLowerCase().includes("universal"));
+
+  const ucBase = ucCandidate ? ucCandidate.netMonthly : Number(process.env.UC_BASE_MONTHLY ?? 0);
   const taperIgnore = Number(process.env.UC_TAPER_DISREGARD ?? 411);
   const taperRate = Number(process.env.UC_TAPER_RATE ?? 0.55);
   const ucPayment = calculateUcPayment({
@@ -100,6 +104,10 @@ async function loadDashboardData(sort: SortKey): Promise<DashboardData> {
     taperIgnore,
     taperRate,
   });
+  const incomesWithoutUc = incomes.filter(
+    (inc) => inc !== ucCandidate && inc.type !== "uc"
+  );
+  const monthlyIncome = incomesWithoutUc.reduce((sum, inc) => sum + inc.netMonthly, 0);
   const householdIncome = monthlyIncome + ucPayment;
   const expenses = await db.query.expenseTable.findMany({
     where: eq(expenseTable.userId, session!.user.id),
@@ -187,29 +195,51 @@ export default async function DashboardPage({
         <div className="flex flex-1 flex-col">
           <div className="@container/main flex flex-1 flex-col gap-2">
             <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
+              <div className="px-4 lg:px-6">
+                <div className="rounded-2xl border border-border/70 bg-card/80 p-4 text-sm text-muted-foreground shadow-sm shadow-primary/5 backdrop-blur">
+                  <p className="text-foreground font-medium">You are in the right place.</p>
+                  <p>
+                    Keep logging payments when you can. Miss a week? No worries - your totals stay ready for whenever you pick it back up.
+                  </p>
+                </div>
+              </div>
               <SectionCards
                 remainingTotal={formatCurrency(data.summary.totalDebt - data.summary.totalPaid)}
                 totalPaid={formatCurrency(data.summary.totalPaid)}
                 paidThisMonth={formatCurrency(data.summary.paidThisMonth)}
-                nextDebtName={nextDebt ? nextDebt.name : undefined}
-                nextDebtRemaining={nextDebt ? formatCurrency(nextDebt.remainingBalance) : undefined}
                 progressLabel={`${data.summary.progressPercent}%`}
-                monthlyIncome={formatCurrency(data.summary.monthlyIncome)}
-                ucPayment={formatCurrency(data.summary.ucPayment)}
-                householdIncome={formatCurrency(data.summary.householdIncome)}
-                monthlyExpenses={formatCurrency(data.summary.monthlyExpenses)}
-                netCashflow={formatCurrency(data.summary.netCashflow)}
                 snowballAvailable={formatCurrency(snowballAvailable)}
               />
+              <DashboardVisuals
+                debts={data.debts}
+                expenses={data.expenses.map((exp) => ({ name: exp.type, amount: exp.amount }))}
+                summary={{
+                  householdIncome: data.summary.householdIncome,
+                  monthlyExpenses: data.summary.monthlyExpenses,
+                  netCashflow: data.summary.netCashflow,
+                  snowballAvailable,
+                  totalMinimums,
+                  totalDebt: data.summary.totalDebt,
+                  totalPaid: data.summary.totalPaid,
+                }}
+              />
               <div className="px-4 lg:px-6 space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <h2 className="text-lg font-semibold text-foreground">Your debts</h2>
+                  <div className="text-sm text-muted-foreground">
+                    We keep snowball order sorted. Adjust anytime.
+                  </div>
+                </div>
                 <AddDebtPanel />
                 {data.debts.length === 0 && (
-                  <p className="text-sm text-muted-foreground">No debts yet. Add one to get started.</p>
+                  <p className="text-sm text-muted-foreground">
+                    Add your first debt whenever you are ready - we will sort the order and keep totals for you.
+                  </p>
                 )}
                 {data.debts.map((debt) => (
                   <div
                     key={debt.id}
-                    className="flex flex-col gap-3 rounded-md border bg-card/50 p-4"
+                    className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-card/80 p-4 shadow-sm shadow-primary/5 backdrop-blur"
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div className="space-y-1">
@@ -225,10 +255,15 @@ export default async function DashboardPage({
                     </div>
 
                     {debt.remainingBalance > 0 && (
-                      <AddPaymentForm
-                        debtId={debt.id}
-                        remainingBalance={debt.remainingBalance}
-                      />
+                      <div className="space-y-1.5">
+                        <AddPaymentForm
+                          debtId={debt.id}
+                          remainingBalance={debt.remainingBalance}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Skip a week? That is ok. Log the next payment when you are ready and we will update totals.
+                        </p>
+                      </div>
                     )}
                   </div>
                 ))}

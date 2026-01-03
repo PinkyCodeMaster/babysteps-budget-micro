@@ -13,6 +13,8 @@ import {
 } from "@/components/ui/select";
 
 type IncomeType = "hourly" | "monthly_net" | "yearly_gross" | "uc";
+type IncomeCategory = "wage" | "benefit" | "uc" | "disability_pension" | "side_gig" | "second_job" | "other";
+type PaymentFrequency = "weekly" | "fortnightly" | "four_weekly" | "monthly" | "quarterly" | "yearly";
 
 type Props = {
   income: {
@@ -21,6 +23,9 @@ type Props = {
     type: IncomeType;
     amount: number;
     hoursPerWeek: number | null;
+    category?: IncomeCategory;
+    frequency?: PaymentFrequency;
+    paymentDay?: number | null;
   };
 };
 
@@ -40,6 +45,9 @@ export function EditIncomeForm({ income }: Props) {
       type: formData.get("type") as IncomeType,
       amount: Number(formData.get("amount")),
       hoursPerWeek: Number(formData.get("hoursPerWeek")) || null,
+      category: formData.get("category") as IncomeCategory,
+      frequency: formData.get("frequency") as PaymentFrequency,
+      paymentDay: Number(formData.get("paymentDay")) || null,
     };
 
     const res = await fetch(`/api/incomes/${income.id}`, {
@@ -98,6 +106,25 @@ export function EditIncomeForm({ income }: Props) {
         </SelectContent>
       </Select>
 
+      <Select
+        name="category"
+        defaultValue={income.category ?? "wage"}
+        disabled={loading}
+      >
+        <SelectTrigger>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="wage">Wage / Salary</SelectItem>
+          <SelectItem value="benefit">Benefit</SelectItem>
+          <SelectItem value="uc">Universal Credit</SelectItem>
+          <SelectItem value="disability_pension">Disability/Pension</SelectItem>
+          <SelectItem value="side_gig">Side gig</SelectItem>
+          <SelectItem value="second_job">Second job</SelectItem>
+          <SelectItem value="other">Other</SelectItem>
+        </SelectContent>
+      </Select>
+
       <Input
         name="amount"
         type="number"
@@ -118,13 +145,41 @@ export function EditIncomeForm({ income }: Props) {
         />
       )}
 
+      <Select
+        name="frequency"
+        defaultValue={income.frequency ?? "monthly"}
+        disabled={loading}
+      >
+        <SelectTrigger>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="weekly">Weekly</SelectItem>
+          <SelectItem value="fortnightly">Fortnightly</SelectItem>
+          <SelectItem value="four_weekly">Four-weekly</SelectItem>
+          <SelectItem value="monthly">Monthly</SelectItem>
+          <SelectItem value="quarterly">Quarterly</SelectItem>
+          <SelectItem value="yearly">Yearly</SelectItem>
+        </SelectContent>
+      </Select>
+
+      <Input
+        name="paymentDay"
+        type="number"
+        defaultValue={income.paymentDay ?? undefined}
+        min={1}
+        max={31}
+        placeholder="Payment day (1-31, optional)"
+        disabled={loading}
+      />
+
       {error && (
         <p className="text-sm text-red-500">{error}</p>
       )}
 
       <div className="flex gap-2">
         <Button type="submit" size="sm" disabled={loading}>
-          {loading ? "Saving…" : "Save"}
+          {loading ? "Saving..." : "Save"}
         </Button>
         <Button
           type="button"

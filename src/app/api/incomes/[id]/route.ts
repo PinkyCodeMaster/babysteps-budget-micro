@@ -6,12 +6,21 @@ import { incomeTable } from "@/db/schema";
 import { estimateNetMonthly, type IncomeType } from "@/lib/income-logic";
 import { and, eq } from "drizzle-orm";
 
-const allowedTypes: IncomeType[] = ["hourly", "monthly_net", "yearly_gross", "uc"];
+type IncomeCategory = "wage" | "benefit" | "uc" | "disability_pension" | "side_gig" | "second_job" | "other";
+type PaymentFrequency = "weekly" | "fortnightly" | "four_weekly" | "monthly" | "quarterly" | "yearly";
 
-export async function GET(
-  _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+const allowedTypes: IncomeType[] = ["hourly", "monthly_net", "yearly_gross", "uc"];
+const allowedCategories: IncomeCategory[] = ["wage", "benefit", "uc", "disability_pension", "side_gig", "second_job", "other"];
+const allowedFrequencies: PaymentFrequency[] = ["weekly", "fortnightly", "four_weekly", "monthly", "quarterly", "yearly"];
+
+function safeDay(value?: number | null) {
+  if (Number.isInteger(Number(value)) && Number(value) >= 1 && Number(value) <= 31) {
+    return Number(value);
+  }
+  return null;
+}
+
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -38,10 +47,7 @@ export async function GET(
   return Response.json({ ...income, netMonthly });
 }
 
-export async function PUT(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -52,20 +58,28 @@ export async function PUT(
   }
 
   const body = await req.json();
-  const { name, type, amount, hoursPerWeek } = body as {
-    name?: string;
-    type?: IncomeType;
-    amount?: number;
-    hoursPerWeek?: number | null;
-  };
+  const { name, type, amount, hoursPerWeek, category, frequency, paymentDay } = body as Partial<{
+    name: string;
+    type: IncomeType;
+    amount: number;
+    hoursPerWeek: number | null;
+    category: IncomeCategory;
+    frequency: PaymentFrequency;
+    paymentDay: number | null;
+  }>;
 
-  if (!name || !type || !allowedTypes.includes(type)) {
+  if (!name || name.length > 255 || !type || !allowedTypes.includes(type)) {
     return Response.json({ error: "Please provide a valid name and type." }, { status: 400 });
   }
 
   if (!Number.isFinite(Number(amount)) || Number(amount) <= 0) {
     return Response.json({ error: "Amount must be greater than zero." }, { status: 400 });
   }
+
+  const safeCategory = allowedCategories.includes(category as IncomeCategory) ? (category as IncomeCategory) : "wage";
+  const safeFrequency = allowedFrequencies.includes(frequency as PaymentFrequency)
+    ? (frequency as PaymentFrequency)
+    : "monthly";
 
   const updated = await db
     .update(incomeTable)
@@ -74,6 +88,9 @@ export async function PUT(
       type,
       amount: Number(amount),
       hoursPerWeek: hoursPerWeek ? Number(hoursPerWeek) : null,
+      category: safeCategory,
+      frequency: safeFrequency,
+      paymentDay: safeDay(paymentDay),
     })
     .where(and(eq(incomeTable.id, incomeId), eq(incomeTable.userId, session.user.id)))
     .returning();
@@ -92,10 +109,7 @@ export async function PUT(
   return Response.json({ ...income, netMonthly });
 }
 
-export async function DELETE(
-  _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return Response.json({ error: "Unauthorized" }, { status: 401 });
 

@@ -8,6 +8,25 @@ export const incomeTypeEnum = pgEnum("income_type", [
   "uc",
 ]);
 
+export const incomeCategoryEnum = pgEnum("income_category", [
+  "wage",
+  "benefit",
+  "uc",
+  "disability_pension",
+  "side_gig",
+  "second_job",
+  "other",
+]);
+
+export const paymentFrequencyEnum = pgEnum("payment_frequency", [
+  "weekly",
+  "fortnightly",
+  "four_weekly",
+  "monthly",
+  "quarterly",
+  "yearly",
+]);
+
 export const incomeTable = pgTable("incomes", {
   id: integer().primaryKey().generatedAlwaysAsIdentity(),
 
@@ -22,6 +41,12 @@ export const incomeTable = pgTable("incomes", {
   amount: integer().notNull(),
 
   hoursPerWeek: integer(),
+
+  category: incomeCategoryEnum().default("wage").notNull(),
+
+  frequency: paymentFrequencyEnum().default("monthly").notNull(),
+
+  paymentDay: integer(),
 
   created_at: timestamp().defaultNow().notNull(),
   updated_at: timestamp(),

@@ -4,8 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function NotFound() {
   return (
-    <main className="flex min-h-screen items-center justify-center px-6">
-      <Card className="max-w-lg w-full">
+    <main className="flex min-h-screen items-center justify-center px-6 py-12">
+      <Card className="w-full max-w-lg border border-border/70 bg-card/80 shadow-lg shadow-primary/10 backdrop-blur">
         <CardHeader>
           <CardTitle>Page not found</CardTitle>
         </CardHeader>

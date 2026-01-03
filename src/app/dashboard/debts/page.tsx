@@ -121,8 +121,6 @@ export default async function DebtsPage({
                 remainingTotal={formatCurrency(data.summary.totalDebt - data.summary.totalPaid)}
                 totalPaid={formatCurrency(data.summary.totalPaid)}
                 paidThisMonth={formatCurrency(data.summary.paidThisMonth)}
-                nextDebtName={nextDebt ? nextDebt.name : undefined}
-                nextDebtRemaining={nextDebt ? formatCurrency(nextDebt.remainingBalance) : undefined}
                 progressLabel={`${data.summary.progressPercent}%`}
               />
               <div className="px-4 lg:px-6 space-y-4">

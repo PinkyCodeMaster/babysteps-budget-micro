@@ -7,7 +7,6 @@ import {
   IconHelp,
   IconInnerShadowTop,
   IconListDetails,
-  IconSearch,
   IconSettings,
 } from "@tabler/icons-react";
 
@@ -34,9 +33,9 @@ const navMain = [
     icon: IconDashboard,
   },
   {
-    title: "Debts",
-    url: "/dashboard/debts",
-    icon: IconChartBar,
+    title: "Income",
+    url: "/dashboard/income",
+    icon: IconDashboard,
   },
   {
     title: "Expenses",
@@ -44,9 +43,9 @@ const navMain = [
     icon: IconListDetails,
   },
   {
-    title: "Income",
-    url: "/dashboard/income",
-    icon: IconDashboard,
+    title: "Debts",
+    url: "/dashboard/debts",
+    icon: IconChartBar,
   },
   {
     title: "Snowball",
@@ -58,18 +57,13 @@ const navMain = [
 const navSecondary = [
   {
     title: "Settings",
-    url: "#",
+    url: "/dashboard/account",
     icon: IconSettings,
   },
   {
     title: "Get Help",
-    url: "#",
+    url: "/help",
     icon: IconHelp,
-  },
-  {
-    title: "Search",
-    url: "#",
-    icon: IconSearch,
   },
 ];
 

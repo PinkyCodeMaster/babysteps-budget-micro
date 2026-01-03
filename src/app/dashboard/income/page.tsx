@@ -1,5 +1,6 @@
 import { AppSidebar } from "@/components/app-sidebar";
 import { AddIncomeForm } from "@/components/dashboard/add-income-form";
+import { IncomeVisuals } from "@/components/dashboard/income-visuals";
 import { SiteHeader } from "@/components/site-header";
 import {
   SidebarInset,
@@ -55,9 +56,12 @@ async function loadIncomeData() {
     }),
   }));
 
-  const totalNetMonthly = enriched.reduce((sum, inc) => sum + inc.netMonthly, 0);
+  // Pick up UC from an entry typed as "uc" or named "universal credit" (fallback for users who picked the wrong type).
+  const ucCandidate =
+    enriched.find((inc) => inc.type === "uc") ||
+    enriched.find((inc) => inc.name.toLowerCase().includes("universal"));
 
-  const ucBase = Number(process.env.UC_BASE_MONTHLY ?? 0);
+  const ucBase = ucCandidate ? ucCandidate.netMonthly : Number(process.env.UC_BASE_MONTHLY ?? 0);
   const taperIgnore = Number(process.env.UC_TAPER_DISREGARD ?? 411);
   const taperRate = Number(process.env.UC_TAPER_RATE ?? 0.55);
   const ucPayment = calculateUcPayment({
@@ -66,9 +70,30 @@ async function loadIncomeData() {
     taperIgnore,
     taperRate,
   });
+  const incomesWithoutUc = enriched.filter(
+    (inc) => inc !== ucCandidate && inc.type !== "uc"
+  );
+  const totalNetMonthly = incomesWithoutUc.reduce((sum, inc) => sum + inc.netMonthly, 0);
+  const incomesWithAdjustedUc = [
+    ...incomesWithoutUc,
+    ...(ucCandidate || ucBase
+      ? [
+          {
+            ...(ucCandidate ?? {
+              id: -1,
+              name: "Universal Credit",
+              type: "uc",
+              amount: ucBase,
+              hoursPerWeek: null,
+            }),
+            netMonthly: ucPayment,
+          },
+        ]
+      : []),
+  ];
 
   return {
-    incomes: enriched,
+    incomes: incomesWithAdjustedUc,
     summary: {
       totalNetMonthly,
       ucPayment,
@@ -95,8 +120,14 @@ export default async function IncomePage() {
         <div className="flex flex-1 flex-col">
           <div className="@container/main flex flex-1 flex-col gap-2">
             <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
+              <div className="px-4 lg:px-6">
+                <div className="rounded-2xl border border-border/70 bg-card/80 p-4 text-sm text-muted-foreground shadow-sm shadow-primary/5 backdrop-blur">
+                  Log pay, side income, and UC estimates here. Update them anytime - your totals will refresh without judgment.
+                </div>
+              </div>
+
               <div className="grid gap-3 px-4 md:grid-cols-3 lg:px-6">
-                <Card>
+                <Card className="border border-border/70 bg-card/80 shadow-sm shadow-primary/5 backdrop-blur">
                   <CardHeader>
                     <CardTitle className="text-sm font-medium text-muted-foreground">
                       Take-home per month
@@ -111,7 +142,7 @@ export default async function IncomePage() {
                     </p>
                   </CardContent>
                 </Card>
-                <Card>
+                <Card className="border border-border/70 bg-card/80 shadow-sm shadow-primary/5 backdrop-blur">
                   <CardHeader>
                     <CardTitle className="text-sm font-medium text-muted-foreground">
                       UC estimate
@@ -122,11 +153,11 @@ export default async function IncomePage() {
                       {formatCurrency(data.summary.ucPayment)}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Based on base, taper, and disregard in env.
+                      Based on base, taper, and disregard settings.
                     </p>
                   </CardContent>
                 </Card>
-                <Card>
+                <Card className="border border-border/70 bg-card/80 shadow-sm shadow-primary/5 backdrop-blur">
                   <CardHeader>
                     <CardTitle className="text-sm font-medium text-muted-foreground">
                       Total monthly income
@@ -137,23 +168,25 @@ export default async function IncomePage() {
                       {formatCurrency(data.summary.householdMonthly)}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Take-home + UC for this account.
+                      Take-home plus UC for this account.
                     </p>
                   </CardContent>
                 </Card>
               </div>
 
               <div className="px-4 lg:px-6 space-y-4">
+                <IncomeVisuals incomes={data.incomes} />
+
                 <AddIncomeForm />
 
                 {data.incomes.length === 0 ? (
                   <p className="text-sm text-muted-foreground">
-                    No incomes yet. Add one to start projecting your monthly cash.
+                    Add incomes when you are ready. We will project your monthly cash without pressure.
                   </p>
                 ) : (
                   <div className="space-y-3">
                     {data.incomes.map((income) => (
-                      <Card key={income.id} className="bg-card/50">
+                      <Card key={income.id} className="border border-border/70 bg-card/80 shadow-sm shadow-primary/5 backdrop-blur">
                         <CardHeader className="pb-3">
                           <div className="flex items-start justify-between gap-3">
                             <div>

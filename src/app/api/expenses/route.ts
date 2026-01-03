@@ -16,9 +16,22 @@ type ExpenseType =
   | "education"
   | "entertainment"
   | "savings"
-  | "other";
+  | "other"
+  | "rent"
+  | "service_charge"
+  | "council_tax"
+  | "gas"
+  | "electric"
+  | "water"
+  | "car_fuel"
+  | "groceries"
+  | "phone"
+  | "internet";
 
-const allowed: ExpenseType[] = [
+type ExpenseCategory = ExpenseType | "rent" | "service_charge" | "council_tax" | "gas" | "electric" | "water" | "car_fuel" | "groceries" | "phone" | "internet";
+type ExpenseFrequency = "weekly" | "fortnightly" | "four_weekly" | "monthly" | "quarterly" | "yearly";
+
+const allowedTypes: ExpenseType[] = [
   "housing",
   "utilities",
   "transport",
@@ -31,7 +44,27 @@ const allowed: ExpenseType[] = [
   "entertainment",
   "savings",
   "other",
+  "rent",
+  "service_charge",
+  "council_tax",
+  "gas",
+  "electric",
+  "water",
+  "car_fuel",
+  "groceries",
+  "phone",
+  "internet",
 ];
+
+const allowedCategories: ExpenseCategory[] = allowedTypes;
+const allowedFrequencies: ExpenseFrequency[] = ["weekly", "fortnightly", "four_weekly", "monthly", "quarterly", "yearly"];
+
+function safeDay(value?: number | null) {
+  if (Number.isInteger(Number(value)) && Number(value) >= 1 && Number(value) <= 31) {
+    return Number(value);
+  }
+  return null;
+}
 
 export async function GET() {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -54,13 +87,17 @@ export async function POST(request: Request) {
   if (!session) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await request.json();
-  const { name, type, amount } = body as Partial<{
+  const { name, type, amount, category, frequency, paymentDay, paidByUc } = body as Partial<{
     name: string;
     type: ExpenseType;
     amount: number;
+    category: ExpenseCategory;
+    frequency: ExpenseFrequency;
+    paymentDay: number;
+    paidByUc: boolean;
   }>;
 
-  if (!name || !type || !allowed.includes(type)) {
+  if (!name || name.length > 255 || !type || !allowedTypes.includes(type)) {
     return Response.json({ error: "Please provide a valid name and type." }, { status: 400 });
   }
 
@@ -68,10 +105,21 @@ export async function POST(request: Request) {
     return Response.json({ error: "Amount must be greater than zero." }, { status: 400 });
   }
 
+  const safeCategory = allowedCategories.includes(category as ExpenseCategory) ? (category as ExpenseCategory) : "other";
+  const safeFrequency = allowedFrequencies.includes(frequency as ExpenseFrequency)
+    ? (frequency as ExpenseFrequency)
+    : "monthly";
+  const safePaymentDay = safeDay(paymentDay);
+  const paidByUcValue = Boolean(paidByUc);
+
   await db.insert(expenseTable).values({
     name,
     type,
     amount: Number(amount),
+    category: safeCategory,
+    frequency: safeFrequency,
+    paymentDay: safePaymentDay,
+    paidByUc: paidByUcValue,
     userId: session.user.id,
   });
 

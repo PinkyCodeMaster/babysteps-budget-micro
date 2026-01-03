@@ -1,11 +1,4 @@
-import {
-  IconTrendingDown,
-  IconTrendingUp,
-  IconTargetArrow,
-  IconWallet,
-  IconCurrencyPound,
-  IconHomeDollar,
-} from "@tabler/icons-react";
+import { IconTrendingDown, IconTrendingUp, IconTargetArrow, IconWallet } from "@tabler/icons-react";
 
 import { Badge } from "@/components/ui/badge";
 import {
@@ -20,155 +13,86 @@ import {
 type SectionCardsProps = {
   remainingTotal: string;
   paidThisMonth: string;
-  nextDebtName?: string;
-  nextDebtRemaining?: string;
-  progressLabel: string;
   totalPaid?: string;
-  monthlyIncome?: string;
-  ucPayment?: string;
-  householdIncome?: string;
-  monthlyExpenses?: string;
-  netCashflow?: string;
   snowballAvailable?: string;
+  progressLabel: string;
 };
 
-export function SectionCards({
-  remainingTotal,
-  paidThisMonth,
-  nextDebtName,
-  nextDebtRemaining,
-  progressLabel,
-  totalPaid,
-  monthlyIncome,
-  ucPayment,
-  householdIncome,
-  monthlyExpenses,
-  netCashflow,
-  snowballAvailable,
-}: SectionCardsProps) {
+export function SectionCards(props: SectionCardsProps) {
+  const { remainingTotal, paidThisMonth, totalPaid, snowballAvailable, progressLabel } = props;
   const cards = [
     {
-      title: "Total Remaining",
+      title: "Remaining",
       value: remainingTotal,
-      badge: "Paying down",
+      badge: "All debts",
       Icon: IconTrendingDown,
-      meta: "Debt decreasing overall",
-      sub: "Includes all active debts",
+      meta: "Chipping away",
+      sub: "",
     },
     {
-      title: "Paid This Month",
+      title: "Paid this month",
       value: paidThisMonth,
-      badge: "Snowball + minimums",
+      badge: "Momentum",
       Icon: IconTrendingUp,
-      meta: "Strong repayment month",
-      sub: "Totals across all payments this month",
-    },
-    ...(totalPaid
-      ? [
-          {
-            title: "Paid to Date",
-            value: totalPaid,
-            badge: "Lifetime",
-            Icon: IconWallet,
-            meta: "Cumulative payments",
-            sub: "Across all debts",
-          },
-        ]
-      : []),
-    {
-      title: "Next Debt (Snowball)",
-      value: nextDebtName ?? "All paid",
-      badge: nextDebtRemaining ?? "Done",
-      Icon: IconTargetArrow,
-      meta: nextDebtName ? "Closest to clearing" : "Snowball complete",
-      sub: "Ordered by remaining balance",
-    },
-    {
-      title: "Progress",
-      value: progressLabel,
-      badge: "Snowball active",
-      Icon: IconWallet,
-      meta: "Stay the course",
-      sub: "Keep payments consistent for fastest payoff",
+      meta: "Keep the rhythm",
+      sub: "",
     },
   ];
 
-  if (monthlyIncome) {
+  if (totalPaid) {
     cards.push({
-      title: "Net Income / mo",
-      value: monthlyIncome,
-      badge: "Take-home",
-      Icon: IconCurrencyPound,
-      meta: "Salary + side gigs",
-      sub: "After tax/NI for hourly & annual entries",
-    });
-  }
-
-  if (householdIncome) {
-    cards.push({
-      title: "Household cash / mo",
-      value: householdIncome,
-      badge: ucPayment ? `${ucPayment} UC est.` : "UC est.",
-      Icon: IconHomeDollar,
-      meta: "Income + benefits",
-      sub: "Based on taper settings in env",
-    });
-  }
-
-  if (monthlyExpenses) {
-    cards.push({
-      title: "Expenses / mo",
-      value: monthlyExpenses,
-      badge: "Monthly outgoings",
+      title: "Paid to date",
+      value: totalPaid,
+      badge: "Lifetime",
       Icon: IconWallet,
-      meta: "Rent, bills, essentials",
-      sub: "All tracked expenses per month",
-    });
-  }
-
-  if (netCashflow) {
-    cards.push({
-      title: "Cashflow / mo",
-      value: netCashflow,
-      badge: "Income - expenses",
-      Icon: IconTrendingUp,
-      meta: "Headroom to deploy",
-      sub: "Use surplus to accelerate snowball",
+      meta: "Forward motion",
+      sub: "",
     });
   }
 
   if (snowballAvailable) {
     cards.push({
-      title: "Snowball extra",
+      title: "Snowball ready",
       value: snowballAvailable,
       badge: "After minimums",
       Icon: IconTargetArrow,
-      meta: "Cash left for debts",
-      sub: "Net cashflow minus minimum payments",
+      meta: "Extra you can apply",
+      sub: "",
     });
   }
 
+  cards.push({
+    title: "Progress",
+    value: progressLabel,
+    badge: "Stay the course",
+    Icon: IconWallet,
+    meta: "Consistency wins",
+    sub: "",
+  });
+
   return (
-    <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-1 gap-4 px-4 *:data-[slot=card]:bg-linear-to-t *:data-[slot=card]:shadow-xs lg:px-6 @xl/main:grid-cols-2 @4xl/main:grid-cols-3">
+    <div className="grid grid-cols-1 gap-4 px-4 lg:px-6 @xl/main:grid-cols-2 @4xl/main:grid-cols-3">
       {cards.map(({ title, value, badge, Icon, meta, sub }) => (
-        <Card key={title} className="@container/card">
-          <CardHeader>
-            <CardDescription>{title}</CardDescription>
+        <Card key={title} className="@container/card border border-border/70 bg-card/80 shadow-sm shadow-primary/5 backdrop-blur">
+          <CardHeader className="gap-2">
+            <CardDescription className="text-[13px] font-medium text-muted-foreground">
+              {title}
+            </CardDescription>
             <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
               {value}
             </CardTitle>
-            <CardAction>
-              <Badge variant="outline">
-                <Icon />
+            <CardAction className="mt-1">
+              <Badge variant="outline" className="gap-1.5 text-xs">
+                <Icon className="size-4" />
                 {badge}
               </Badge>
             </CardAction>
           </CardHeader>
-          <CardFooter className="flex-col items-start gap-1.5 text-sm">
-            <div className="line-clamp-1 flex gap-2 font-medium">
-              {meta} <Icon className="size-4" />
+          <CardFooter className="flex-col items-start gap-1.5 text-sm text-muted-foreground">
+            <div className="line-clamp-2 flex gap-2 font-medium text-foreground">
+              {meta} <Icon className="size-4 text-primary" />
             </div>
-            <div className="text-muted-foreground">{sub}</div>
+            {sub && <div>{sub}</div>}
           </CardFooter>
         </Card>
       ))}

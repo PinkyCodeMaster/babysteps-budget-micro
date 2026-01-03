@@ -8,6 +8,64 @@ import { headers } from "next/headers";
 type DebtParams = { params: Promise<{ id: string }> };
 type ParsedId = { debtId: number } | { error: Response };
 
+type DebtType =
+  | "credit_card"
+  | "personal_loan"
+  | "loan"
+  | "mortgage"
+  | "car_finance"
+  | "overdraft"
+  | "payday"
+  | "utility_arrears"
+  | "council_tax"
+  | "tax_arrears"
+  | "student_loan"
+  | "store_card"
+  | "hire_purchase"
+  | "ccj"
+  | "old_phone_bill"
+  | "rent_arrears"
+  | "gas_arrears"
+  | "electric_arrears"
+  | "water_arrears"
+  | "income_tax_arrears"
+  | "other";
+
+type DebtFrequency = "weekly" | "fortnightly" | "four_weekly" | "monthly" | "quarterly" | "yearly";
+
+const allowedTypes: DebtType[] = [
+  "credit_card",
+  "personal_loan",
+  "loan",
+  "mortgage",
+  "car_finance",
+  "overdraft",
+  "payday",
+  "utility_arrears",
+  "council_tax",
+  "tax_arrears",
+  "student_loan",
+  "store_card",
+  "hire_purchase",
+  "ccj",
+  "old_phone_bill",
+  "rent_arrears",
+  "gas_arrears",
+  "electric_arrears",
+  "water_arrears",
+  "income_tax_arrears",
+  "other",
+];
+
+const allowedFrequencies: DebtFrequency[] = ["weekly", "fortnightly", "four_weekly", "monthly", "quarterly", "yearly"];
+
+function safeDay(value?: number | null) {
+  if (Number.isInteger(Number(value)) && Number(value) >= 1 && Number(value) <= 31) {
+    return Number(value);
+  }
+  return null;
+}
+
 // Validate the dynamic segment up front to keep handlers small.
 function parseDebtId(id: string): ParsedId {
   const debtId = Number(id);
@@ -69,38 +127,68 @@ export async function PATCH(request: NextRequest, { params }: DebtParams) {
   const debtId = parsed.debtId;
 
   const body = await request.json();
-  const { name, type, balance, interestRate, minimumPayment } = body;
+  const { name, type, balance, interestRate, minimumPayment, frequency, dueDay } = body as Partial<{
+    name: string;
+    type: DebtType;
+    balance: number;
+    interestRate: number | null;
+    minimumPayment: number;
+    frequency: DebtFrequency;
+    dueDay: number | null;
+  }>;
 
   // Only apply fields that were supplied by the client.
   const updates: Partial<typeof debtTable.$inferInsert> = {};
 
-  if (name !== undefined) updates.name = name;
-  if (type !== undefined) updates.type = type;
-  if (balance !== undefined) {
-    if (balance <= 0) {
-      return Response.json(
-        { error: "Balance must be greater than zero" },
-        { status: 400 }
-      );
+  if (name !== undefined) {
+    if (!name || name.length > 255) {
+      return Response.json({ error: "Invalid name" }, { status: 400 });
     }
-    updates.balance = balance;
+    updates.name = name;
   }
-  if (interestRate !== undefined) updates.interestRate = interestRate;
-  if (minimumPayment !== undefined) {
-    if (minimumPayment <= 0) {
-      return Response.json(
-        { error: "Minimum payment must be greater than zero" },
-        { status: 400 }
-      );
+
+  if (type !== undefined) {
+    if (!allowedTypes.includes(type)) {
+      return Response.json({ error: "Invalid debt type" }, { status: 400 });
     }
-    updates.minimumPayment = minimumPayment;
+    updates.type = type;
+  }
+
+  if (balance !== undefined) {
+    if (!Number.isFinite(Number(balance)) || Number(balance) <= 0) {
+      return Response.json({ error: "Balance must be greater than zero" }, { status: 400 });
+    }
+    updates.balance = Number(balance);
+  }
+
+  if (interestRate !== undefined) {
+    updates.interestRate = interestRate === null ? null : Number(interestRate);
+  }
+
+  if (minimumPayment !== undefined) {
+    if (!Number.isFinite(Number(minimumPayment)) || Number(minimumPayment) <= 0) {
+      return Response.json({ error: "Minimum payment must be greater than zero" }, { status: 400 });
+    }
+    updates.minimumPayment = Number(minimumPayment);
+  }
+
+  if (frequency !== undefined) {
+    if (!allowedFrequencies.includes(frequency as DebtFrequency)) {
+      return Response.json({ error: "Invalid frequency" }, { status: 400 });
+    }
+    updates.frequency = frequency as DebtFrequency;
+  }
+
+  if (dueDay !== undefined) {
+    const day = safeDay(dueDay);
+    if (dueDay !== null && day === null) {
+      return Response.json({ error: "Invalid due day" }, { status: 400 });
+    }
+    updates.dueDay = day;
   }
 
   if (Object.keys(updates).length === 0) {
-    return Response.json(
-      { error: "No fields provided to update" },
-      { status: 400 }
-    );
+    return Response.json({ error: "No fields provided to update" }, { status: 400 });
   }
 
   updates.updated_at = new Date();

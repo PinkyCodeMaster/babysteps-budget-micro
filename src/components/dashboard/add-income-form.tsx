@@ -19,6 +19,8 @@ import {
 } from "@/components/ui/select";
 
 type IncomeType = "hourly" | "monthly_net" | "yearly_gross" | "uc";
+type IncomeCategory = "wage" | "benefit" | "uc" | "disability_pension" | "side_gig" | "second_job" | "other";
+type PaymentFrequency = "weekly" | "fortnightly" | "four_weekly" | "monthly" | "quarterly" | "yearly";
 
 export function AddIncomeForm() {
   const router = useRouter();
@@ -35,6 +37,9 @@ export function AddIncomeForm() {
       type: formData.get("type") as IncomeType,
       amount: Number(formData.get("amount")),
       hoursPerWeek: Number(formData.get("hoursPerWeek")) || undefined,
+      category: formData.get("category") as IncomeCategory,
+      frequency: formData.get("frequency") as PaymentFrequency,
+      paymentDay: Number(formData.get("paymentDay")) || undefined,
     };
 
     if (!payload.name || !payload.type || !payload.amount || payload.amount <= 0) {
@@ -93,6 +98,26 @@ export function AddIncomeForm() {
             </SelectContent>
           </Select>
 
+          <Select
+            name="category"
+            required
+            disabled={loading}
+            defaultValue="wage"
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Income category" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="wage">Wage / Salary</SelectItem>
+              <SelectItem value="benefit">Benefit</SelectItem>
+              <SelectItem value="uc">Universal Credit</SelectItem>
+              <SelectItem value="disability_pension">Disability/Pension</SelectItem>
+              <SelectItem value="side_gig">Side gig</SelectItem>
+              <SelectItem value="second_job">Second job</SelectItem>
+              <SelectItem value="other">Other</SelectItem>
+            </SelectContent>
+          </Select>
+
           <Input
             name="amount"
             type="number"
@@ -105,6 +130,34 @@ export function AddIncomeForm() {
             }
             required
             min={1}
+            disabled={loading}
+          />
+
+          <Select
+            name="frequency"
+            required
+            disabled={loading}
+            defaultValue="monthly"
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Payment frequency" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="weekly">Weekly</SelectItem>
+              <SelectItem value="fortnightly">Fortnightly</SelectItem>
+              <SelectItem value="four_weekly">Four-weekly</SelectItem>
+              <SelectItem value="monthly">Monthly</SelectItem>
+              <SelectItem value="quarterly">Quarterly</SelectItem>
+              <SelectItem value="yearly">Yearly</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Input
+            name="paymentDay"
+            type="number"
+            min={1}
+            max={31}
+            placeholder="Payment day (1-31, optional)"
             disabled={loading}
           />
 

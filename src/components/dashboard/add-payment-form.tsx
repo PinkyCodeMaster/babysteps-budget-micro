@@ -11,10 +11,7 @@ type Props = {
   remainingBalance: number;
 };
 
-export function AddPaymentForm({
-  debtId,
-  remainingBalance,
-}: Props) {
+export function AddPaymentForm({ debtId, remainingBalance }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -27,7 +24,7 @@ export function AddPaymentForm({
     const amount = Number(formData.get("amount"));
 
     if (!amount || amount <= 0) {
-      setError("Enter a valid payment amount");
+      setError("Enter a payment amount to log");
       setLoading(false);
       return;
     }
@@ -40,9 +37,7 @@ export function AddPaymentForm({
 
     if (!res.ok) {
       const data = await res.json();
-      setError(
-        data.error || "We couldn't add that payment. Please try again."
-      );
+      setError(data.error || "We could not add that payment just yet. Please try again.");
       setLoading(false);
       return;
     }
@@ -57,21 +52,21 @@ export function AddPaymentForm({
       <Input
         name="amount"
         type="number"
-        placeholder={`Payment (max ${formatCurrency(remainingBalance)})`}
+        placeholder={`Payment amount (up to ${formatCurrency(remainingBalance)})`}
         min={1}
         max={remainingBalance}
-        className="w-40"
+        className="w-48"
         required
         disabled={loading}
       />
 
-      <Button type="submit" size="sm" disabled={loading}>
-        {loading ? "Saving..." : "Pay"}
+      <Button type="submit" size="sm" disabled={loading} className="w-fit">
+        {loading ? "Saving..." : "Log payment"}
       </Button>
 
       {remainingBalance <= 50 && remainingBalance > 0 && (
         <span className="text-xs text-muted-foreground" aria-live="polite">
-          Almost there 🎉
+          Almost there - you are close to clearing this one.
         </span>
       )}
 

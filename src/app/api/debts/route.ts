@@ -3,6 +3,64 @@ import { debtTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 
+type DebtType =
+  | "credit_card"
+  | "personal_loan"
+  | "loan"
+  | "mortgage"
+  | "car_finance"
+  | "overdraft"
+  | "payday"
+  | "utility_arrears"
+  | "council_tax"
+  | "tax_arrears"
+  | "student_loan"
+  | "store_card"
+  | "hire_purchase"
+  | "ccj"
+  | "old_phone_bill"
+  | "rent_arrears"
+  | "gas_arrears"
+  | "electric_arrears"
+  | "water_arrears"
+  | "income_tax_arrears"
+  | "other";
+
+type DebtFrequency = "weekly" | "fortnightly" | "four_weekly" | "monthly" | "quarterly" | "yearly";
+
+const allowedTypes: DebtType[] = [
+  "credit_card",
+  "personal_loan",
+  "loan",
+  "mortgage",
+  "car_finance",
+  "overdraft",
+  "payday",
+  "utility_arrears",
+  "council_tax",
+  "tax_arrears",
+  "student_loan",
+  "store_card",
+  "hire_purchase",
+  "ccj",
+  "old_phone_bill",
+  "rent_arrears",
+  "gas_arrears",
+  "electric_arrears",
+  "water_arrears",
+  "income_tax_arrears",
+  "other",
+];
+
+const allowedFrequencies: DebtFrequency[] = ["weekly", "fortnightly", "four_weekly", "monthly", "quarterly", "yearly"];
+
+function safeDay(value?: number | null) {
+  if (Number.isInteger(Number(value)) && Number(value) >= 1 && Number(value) <= 31) {
+    return Number(value);
+  }
+  return null;
+}
+
 // Listing debts is handled inside server components to avoid a broad "get all" API.
 export async function GET() {
   return Response.json({ error: "Listing debts is not available via this endpoint." }, { status: 405 });
@@ -19,21 +77,30 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
 
-    const { name, type, balance, interestRate, minimumPayment } = body;
+    const { name, type, balance, interestRate, minimumPayment, frequency, dueDay } = body as Partial<{
+      name: string;
+      type: DebtType;
+      balance: number;
+      interestRate: number | null;
+      minimumPayment: number;
+      frequency: DebtFrequency;
+      dueDay: number | null;
+    }>;
 
-    if (!name || !Number.isFinite(Number(balance)) || Number(balance) <= 0) {
-      return Response.json(
-        { error: "Please provide a valid name and balance." },
-        { status: 400 }
-      );
+    if (!name || name.length > 255 || !type || !allowedTypes.includes(type)) {
+      return Response.json({ error: "Please provide a valid name and type." }, { status: 400 });
+    }
+
+    if (!Number.isFinite(Number(balance)) || Number(balance) <= 0) {
+      return Response.json({ error: "Please provide a valid balance." }, { status: 400 });
     }
 
     if (!Number.isFinite(Number(minimumPayment)) || Number(minimumPayment) <= 0) {
-      return Response.json(
-        { error: "Minimum payment must be greater than zero." },
-        { status: 400 }
-      );
+      return Response.json({ error: "Minimum payment must be greater than zero." }, { status: 400 });
     }
+
+    const safeFrequency = allowedFrequencies.includes(frequency as DebtFrequency) ? (frequency as DebtFrequency) : "monthly";
+    const safeDueDay = safeDay(dueDay);
 
     const sanitized: typeof debtTable.$inferInsert = {
       name,
@@ -41,6 +108,8 @@ export async function POST(request: Request) {
       balance: Number(balance),
       interestRate: interestRate === undefined || interestRate === null ? null : Number(interestRate),
       minimumPayment: Number(minimumPayment),
+      frequency: safeFrequency,
+      dueDay: safeDueDay,
       userId: session.user.id,
     };
 

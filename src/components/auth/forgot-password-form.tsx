@@ -44,9 +44,7 @@ export function ForgotPasswordForm() {
       <FieldGroup>
         <div className="space-y-1">
           <h1 className="text-xl font-semibold">Forgot password</h1>
-          <FieldDescription>
-            Enter your email and we’ll send you a reset link.
-          </FieldDescription>
+          <FieldDescription>Enter your email and we&apos;ll send you a reset link.</FieldDescription>
         </div>
 
         <Field>
