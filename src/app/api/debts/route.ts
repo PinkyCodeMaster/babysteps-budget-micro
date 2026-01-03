@@ -2,6 +2,7 @@ import { db } from "@/db";
 import { debtTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
+import { logError } from "@/lib/logger";
 
 type DebtType =
   | "credit_card"
@@ -68,13 +69,15 @@ export async function GET() {
 
 // Creates a debt; numeric fields validated server-side and scoped to the signed-in user.
 export async function POST(request: Request) {
-  const session = await auth.api.getSession({ headers: await headers() });
-
-  if (!session) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
+  let userId: string | null = null;
   try {
+    const session = await auth.api.getSession({ headers: await headers() });
+
+    if (!session) {
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    userId = session.user.id;
+
     const body = await request.json();
 
     const { name, type, balance, interestRate, minimumPayment, frequency, dueDay } = body as Partial<{
@@ -120,7 +123,7 @@ export async function POST(request: Request) {
 
     return Response.json({ id: created.id }, { status: 201 });
   } catch (error) {
-    console.error("POST /api/debts failed", error);
+    logError("POST /api/debts failed", error, { userId });
     return Response.json({ error: "We couldn't save that debt. Please try again." }, { status: 500 });
   }
 }

@@ -19,6 +19,7 @@ async function seed() {
       email: TEST_EMAIL,
       name: "Test User",
       emailVerified: true,
+      notifyEmails: true,
       image: null,
     });
 

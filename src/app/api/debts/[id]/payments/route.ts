@@ -4,6 +4,7 @@ import { eq, and } from "drizzle-orm";
 import { NextRequest } from "next/server";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
+import { logError } from "@/lib/logger";
 
 type ParsedId = { debtId: number } | { error: Response };
 
@@ -37,33 +38,44 @@ async function fetchDebt(debtId: number, userId: string) {
 }
 
 export async function GET(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return Response.json({ error: "Unauthorized" }, { status: 401 });
-
-  const { id } = await params;
-  const parsed = parseDebtId(id);
-  if ("error" in parsed) return parsed.error;
-  const debtId = parsed.debtId;
-
-  const debt = await fetchDebt(debtId, session.user.id);
-  if (debt.error) return debt.error;
-
-  return Response.json({
-    payments: debt.data.payments,
-    totalPaid: debt.totalPaid,
-    remainingBalance: debt.remainingBalance,
-  });
-}
-
-export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  let debtId: number | null = null;
+  let userId: string | null = null;
   try {
     const session = await auth.api.getSession({ headers: await headers() });
     if (!session) return Response.json({ error: "Unauthorized" }, { status: 401 });
+    userId = session.user.id;
 
     const { id } = await params;
     const parsed = parseDebtId(id);
     if ("error" in parsed) return parsed.error;
-    const debtId = parsed.debtId;
+    debtId = parsed.debtId;
+
+    const debt = await fetchDebt(debtId, session.user.id);
+    if (debt.error) return debt.error;
+
+    return Response.json({
+      payments: debt.data.payments,
+      totalPaid: debt.totalPaid,
+      remainingBalance: debt.remainingBalance,
+    });
+  } catch (error) {
+    logError("GET /api/debts/[id]/payments failed", error, { debtId, userId });
+    return Response.json({ error: "Unexpected error" }, { status: 500 });
+  }
+}
+
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  let debtId: number | null = null;
+  let userId: string | null = null;
+  try {
+    const session = await auth.api.getSession({ headers: await headers() });
+    if (!session) return Response.json({ error: "Unauthorized" }, { status: 401 });
+    userId = session.user.id;
+
+    const { id } = await params;
+    const parsed = parseDebtId(id);
+    if ("error" in parsed) return parsed.error;
+    debtId = parsed.debtId;
 
     const body = await request.json();
     const { amount, paymentDate } = body;
@@ -127,7 +139,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       { status: 201 }
     );
   } catch (error) {
-    console.error("POST /api/debts/[id]/payments failed", error);
+    logError("POST /api/debts/[id]/payments failed", error, { debtId, userId });
     return Response.json(
       { error: "We couldn't add that payment. Please try again." },
       { status: 500 }

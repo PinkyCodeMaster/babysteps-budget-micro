@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { account, session, user, verification } from "@/db/schema/auth";
 import { nextCookies } from "better-auth/next-js";
 import { buildResetPasswordEmail, buildVerifyEmail, buildWelcomeEmail, sendMail } from "@/lib/mail";
+import { expo } from "@better-auth/expo";
 
 export const auth = betterAuth({
     database: drizzleAdapter(db, {
@@ -54,9 +55,10 @@ export const auth = betterAuth({
         },
     },
     plugins: [
+        expo(),
         nextCookies()
     ],
-    trustedOrigins: ['http//localhost:3000', "http://192.168.0.27:3000"]
+    trustedOrigins: ['http//localhost:3000', "http://192.168.0.27:3000","native://"]
 });
 
 export type Session = typeof auth.$Infer.Session

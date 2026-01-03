@@ -100,7 +100,6 @@ export default async function DebtsPage({
       : "snowball";
 
   const data = await loadDebtData(sortKey);
-  const nextDebt = data.debts[0];
 
   return (
     <SidebarProvider

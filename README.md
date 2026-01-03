@@ -1,107 +1,110 @@
-# BabySteps – Budget Micro
+# BabySteps Budget
 
-A minimal budgeting, income, and debt-snowball tracker that is production-ready, not a demo.
+Production-focused budgeting, UC-aware income, and debt snowball tracker. Built to be shippable, not a demo.
 
-Flow: add debts → record payments → add incomes → track progress and monthly cash.
+Flow: add incomes and expenses → capture debts → record payments → see cashflow, UC impact, and payoff progress. Opt-in email reminders keep people on track without judgement.
 
 ---
 
 ## What it does
 
-- Add and manage debts (cards, loans, finance, arrears, CCJs, more)
-- Record payments with overpayment protection
-- Add income sources (hourly, net monthly, gross yearly, UC)
-- Estimate take-home + UC taper to show household cash
-- Snowball ordering and clear payoff progress
-- Email-based auth with verification, reset, welcome flows
-
-No bank connections. No fluff.
-
----
-
-## Design principles
-
-- Finished over fancy — small scope, fully complete
-- Derived data — balances & income outputs are calculated, not duplicated
-- Server-first — backend logic lives in API routes
-- Simple UX — clear states, no dead ends
+- Debts: expanded UK-friendly types, min payment and frequency, due-day scheduling that moves weekends/bank holidays to the next working day, overpayment guard, snowball ordering.
+- Payments: track totals, remaining balance, and monthly paid status; forms validated server-side.
+- Income: hourly/net monthly/gross yearly/UC; taper calculation using disregard and taper rate; categories, frequency, and payment day metadata.
+- Expenses: richer categories, paid-by-UC flag, frequency + payment day; monthly totals surfaced to dashboards.
+- UC: hard-coded first-£411 disregard and 55% taper (configurable via env) and ignores UC income when tapering.
+- Notifications: optional user toggle; Resend/Mailpit email reminders for upcoming payments (next 3 days) and progress; cron-secured endpoint.
+- Auth: better-auth email flows (sign-up, sign-in, verification, password reset), session-protected API routes.
+- UX: light/dark theming, charts, empty/loading/error states, mobile-friendly navigation.
 
 ---
 
 ## Tech stack
 
 - Next.js 16 (App Router) + TypeScript
-- Drizzle ORM (Postgres via Neon)
-- better-auth + mailer (Mailpit locally)
-- shadcn/ui + Tailwind CSS
+- Drizzle ORM (Postgres; tested with Neon)
+- better-auth + mailer (Resend in prod, Mailpit locally)
+- shadcn/ui + Tailwind CSS + Recharts
 
 ---
 
-## Core features
-
-- Debts: create, edit, delete; validate payments against remaining balance
-- Payments: snowball sorting (high/low/snowball), monthly paid tracker
-- Income: hourly / net monthly / gross yearly / UC; take-home estimation; UC taper calc
-- Expenses: monthly categories with totals and net cashflow
-- Auth: email sign-up, verification, sign-in, reset password (no social yet)
-- UX: empty states, loading states, inline errors, mobile-friendly nav
-
----
-
-## Out of scope (by design)
-
-- Bank integrations
-- Full budgeting categories (coming later)
-- Charts/analytics dashboards
-- AI recommendations
-- Import/export
-
----
-
-## Running locally
+## Run it locally
 
 ```bash
 # install dependencies
 npm install
+# or bun install
 
-# run dev server
+# start dev server
 npm run dev
+# lint / test / build
+npm run lint
+npm test
+npm run build
+
+# seed demo data
+npm run seed:test
 ```
 
-Environment variables (`.env` or export):
+---
+
+## Environment variables
 
 ```
-DATABASE_URL=your_neon_postgres_url
-MAILPIT_HOST=127.0.0.1
-MAILPIT_PORT=1025
-MAIL_FROM="BabySteps <no-reply@babysteps.test>"
+DATABASE_URL=postgres_connection_string
+
+# Auth
 BETTER_AUTH_URL=http://localhost:3000
 BETTER_AUTH_SECRET=your_random_secret
 
-# Income taper (optional, defaults shown)
+# Mail (local Mailpit)
+MAILPIT_HOST=127.0.0.1
+MAILPIT_PORT=1025
+MAIL_FROM="BabySteps <no-reply@babysteps.test>"
+
+# Mail (production via Resend)
+RESEND_API_KEY=your_resend_key
+RESEND_FROM="BabySteps <no-reply@yourdomain.com>"
+
+# UC taper config (defaults shown)
 UC_BASE_MONTHLY=0
 UC_TAPER_DISREGARD=411
 UC_TAPER_RATE=0.55
+
+# Cron
+CRON_SECRET=long_random_token
 ```
 
-Utilities:
+---
 
-- Seed demo data for the test user: `npm run seed:test`
-- Run tests (non-auth): `npm test`
+## Cron reminders
+
+- Endpoint: `POST /api/cron/notify` with header `Authorization: Bearer ${CRON_SECRET}`.
+- Health check: `GET /api/cron/notify` with the same header.
+- Schedule (example for Vercel Cron): daily, early morning.
+- Behavior: scans users who opted in, finds debts due in next 3 days (after weekend/bank-holiday adjustment), and emails reminders plus progress.
+
+---
+
+## Testing
+
+- Unit tests: `npm test` (tsx runner)
+- Lint: `npm run lint`
+- Build/type-check: `npm run build`
 
 ---
 
 ## Screenshots
 
-Captured and saved in `./screenshots`:
+Stored in `./screenshots`:
 
-- `welcome.png`
-- `dashboard-empty.png`
-- `add-debt.png`
-- `dashboard-with-debts.png`
-- `add-payment.png`
+- welcome.png
+- dashboard-empty.png
+- add-debt.png
+- dashboard-with-debts.png
+- add-payment.png
 
-Embed preview:
+Embed:
 
 ```
 ![Welcome](./screenshots/welcome.png)
@@ -116,31 +119,20 @@ Embed preview:
 ## Known limitations
 
 - No social login yet (email flows only)
-- No historical analytics/graphs yet
-- Optimised for clarity, not scale
+- No external bank connections or imports
+- Monitoring/alerting currently console-only (add Sentry/Logtail/etc. for production)
+- Analytics/graphs are minimal by design
 
 ---
 
-## Why this project exists
+## Production checklist
 
-This project was built to demonstrate:
+- [ ] Database migrated and backups enabled
+- [ ] Env vars set (DB, auth, mail, UC taper, CRON_SECRET)
+- [ ] Resend verified sender or Mailpit running locally
+- [ ] Cron job configured to call `/api/cron/notify` with `Bearer CRON_SECRET`
+- [ ] HTTPS enforced and secure cookies enabled in hosting
+- [ ] Monitoring/alerting pointed at a log sink
+- [ ] Lint/tests/build passing
 
-- end-to-end product delivery
-- clean backend modelling
-- safe validation and data handling
-- a complete, shippable feature set
-
-It is intentionally small — and intentionally finished.
-
----
-
-## Final checklist
-
-- README exists and reads calmly
-- `screenshots` folder exists
-- App runs cleanly
-- No TODOs in the UI
-- Errors are human-readable
-- No screen feels dead
-
-When all are checked: stop. Do not add features. This project is complete.
+When the list is checked, ship it.

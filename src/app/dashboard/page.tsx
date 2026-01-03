@@ -15,11 +15,12 @@ import { estimateNetMonthly, calculateUcPayment, type IncomeType } from "@/lib/i
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { db } from "@/db";
-import { debtTable, incomeTable, expenseTable } from "@/db/schema";
+import { debtTable, incomeTable, expenseTable, user } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { formatCurrency } from "@/lib/format";
 import { sortDebts, calculateProgress, SortKey } from "@/lib/debt-logic";
 import type React from "react";
+import { revalidatePath } from "next/cache";
 
 type Debt = {
   id: number;
@@ -61,6 +62,7 @@ type DashboardData = {
     householdIncome: number;
     monthlyExpenses: number;
     netCashflow: number;
+    notifyEmails: boolean;
   };
   debts: DebtWithTotals[];
   incomes: Income[];
@@ -114,6 +116,10 @@ async function loadDashboardData(sort: SortKey): Promise<DashboardData> {
   });
   const monthlyExpenses = expenses.reduce((sum, exp) => sum + exp.amount, 0);
   const netCashflow = householdIncome - monthlyExpenses;
+  const userPrefs = await db.query.user.findFirst({
+    where: eq(user.id, session.user.id),
+    columns: { notifyEmails: true },
+  });
 
   const enriched: DebtWithTotals[] = debts.map((debt) => {
     const totalPaid = debt.payments.reduce((sum, p) => sum + p.amount, 0);
@@ -156,6 +162,7 @@ async function loadDashboardData(sort: SortKey): Promise<DashboardData> {
       householdIncome,
       monthlyExpenses,
       netCashflow,
+      notifyEmails: userPrefs?.notifyEmails ?? true,
     },
     debts: sortedDebts,
     incomes,
@@ -168,6 +175,20 @@ export default async function DashboardPage({
 }: {
   searchParams: Promise<{ sort?: string }>;
 }) {
+  async function updateNotifications(formData: FormData) {
+    "use server";
+    const enabled = formData.get("enabled") === "true";
+    const session = await auth.api.getSession({ headers: await headers() });
+    if (!session) {
+      redirect("/sign-in");
+    }
+    await db
+      .update(user)
+      .set({ notifyEmails: enabled, updatedAt: new Date() })
+      .where(eq(user.id, session.user.id));
+    revalidatePath("/dashboard");
+  }
+
   const { sort: sortParam } = await searchParams;
   const sortKey: SortKey =
     sortParam === "low-high" || sortParam === "high-low" || sortParam === "snowball"
@@ -175,7 +196,6 @@ export default async function DashboardPage({
       : "snowball";
 
   const data = await loadDashboardData(sortKey);
-  const nextDebt = data.debts[0];
 
   const totalMinimums = data.debts.reduce((sum, d) => sum + d.minimumPayment, 0);
   const snowballAvailable = Math.max(0, data.summary.netCashflow - totalMinimums);
@@ -201,6 +221,27 @@ export default async function DashboardPage({
                   <p>
                     Keep logging payments when you can. Miss a week? No worries - your totals stay ready for whenever you pick it back up.
                   </p>
+                </div>
+              </div>
+              <div className="px-4 lg:px-6">
+                <div className="flex flex-col gap-2 rounded-2xl border border-border/70 bg-card/80 p-4 shadow-sm shadow-primary/5 backdrop-blur">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="space-y-1">
+                      <p className="text-sm font-semibold text-foreground">Email notifications</p>
+                      <p className="text-xs text-muted-foreground">
+                        Due-date reminders and morale check-ins. You are currently {data.summary.notifyEmails ? "on" : "off"}.
+                      </p>
+                    </div>
+                    <form action={updateNotifications}>
+                      <input type="hidden" name="enabled" value={(!data.summary.notifyEmails).toString()} />
+                      <button
+                        type="submit"
+                        className="text-sm font-semibold text-primary underline underline-offset-4"
+                      >
+                        Turn {data.summary.notifyEmails ? "off" : "on"}
+                      </button>
+                    </form>
+                  </div>
                 </div>
               </div>
               <SectionCards

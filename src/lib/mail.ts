@@ -14,6 +14,8 @@ type MailArgs = {
 const host = process.env.MAILPIT_HOST || "127.0.0.1";
 const port = Number(process.env.MAILPIT_PORT || 1025);
 const from = process.env.MAIL_FROM || "BabySteps <no-reply@babysteps.test>";
+const resendApiKey = process.env.RESEND_API_KEY;
+const resendFrom = process.env.RESEND_FROM || from;
 
 const transporter = nodemailer.createTransport({
   host,
@@ -21,6 +23,29 @@ const transporter = nodemailer.createTransport({
 });
 
 export async function sendMail({ to, subject, text, html }: MailArgs) {
+  if (resendApiKey) {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${resendApiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: resendFrom,
+        to: [to],
+        subject,
+        html,
+        text,
+      }),
+    });
+
+    if (!res.ok) {
+      const body = await res.text();
+      throw new Error(`Resend failed: ${res.status} ${body}`);
+    }
+    return;
+  }
+
   return transporter.sendMail({
     from,
     to,

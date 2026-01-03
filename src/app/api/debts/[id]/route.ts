@@ -4,6 +4,7 @@ import { eq, and } from "drizzle-orm";
 import { NextRequest } from "next/server";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
+import { logError } from "@/lib/logger";
 
 type DebtParams = { params: Promise<{ id: string }> };
 type ParsedId = { debtId: number } | { error: Response };
@@ -103,128 +104,152 @@ async function fetchDebt(debtId: number, userId: string) {
 }
 
 export async function GET(_: NextRequest, { params }: DebtParams) {
-  const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  let debtId: number | null = null;
+  let userId: string | null = null;
+  try {
+    const session = await auth.api.getSession({ headers: await headers() });
+    if (!session) return Response.json({ error: "Unauthorized" }, { status: 401 });
+    userId = session.user.id;
 
-  const { id } = await params;
-  const parsed = parseDebtId(id);
-  if ("error" in parsed) return parsed.error;
-  const debtId = parsed.debtId;
+    const { id } = await params;
+    const parsed = parseDebtId(id);
+    if ("error" in parsed) return parsed.error;
+    debtId = parsed.debtId;
 
-  const debt = await fetchDebt(debtId, session.user.id);
-  if (debt.error) return debt.error;
+    const debt = await fetchDebt(debtId, session.user.id);
+    if (debt.error) return debt.error;
 
-  return Response.json(debt.data);
+    return Response.json(debt.data);
+  } catch (error) {
+    logError("GET /api/debts/[id] failed", error, { debtId, userId });
+    return Response.json({ error: "Unexpected error" }, { status: 500 });
+  }
 }
 
 export async function PATCH(request: NextRequest, { params }: DebtParams) {
-  const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  let debtId: number | null = null;
+  let userId: string | null = null;
+  try {
+    const session = await auth.api.getSession({ headers: await headers() });
+    if (!session) return Response.json({ error: "Unauthorized" }, { status: 401 });
+    userId = session.user.id;
 
-  const { id } = await params;
-  const parsed = parseDebtId(id);
-  if ("error" in parsed) return parsed.error;
-  const debtId = parsed.debtId;
+    const { id } = await params;
+    const parsed = parseDebtId(id);
+    if ("error" in parsed) return parsed.error;
+    debtId = parsed.debtId;
 
-  const body = await request.json();
-  const { name, type, balance, interestRate, minimumPayment, frequency, dueDay } = body as Partial<{
-    name: string;
-    type: DebtType;
-    balance: number;
-    interestRate: number | null;
-    minimumPayment: number;
-    frequency: DebtFrequency;
-    dueDay: number | null;
-  }>;
+    const body = await request.json();
+    const { name, type, balance, interestRate, minimumPayment, frequency, dueDay } = body as Partial<{
+      name: string;
+      type: DebtType;
+      balance: number;
+      interestRate: number | null;
+      minimumPayment: number;
+      frequency: DebtFrequency;
+      dueDay: number | null;
+    }>;
 
-  // Only apply fields that were supplied by the client.
-  const updates: Partial<typeof debtTable.$inferInsert> = {};
+    // Only apply fields that were supplied by the client.
+    const updates: Partial<typeof debtTable.$inferInsert> = {};
 
-  if (name !== undefined) {
-    if (!name || name.length > 255) {
-      return Response.json({ error: "Invalid name" }, { status: 400 });
+    if (name !== undefined) {
+      if (!name || name.length > 255) {
+        return Response.json({ error: "Invalid name" }, { status: 400 });
+      }
+      updates.name = name;
     }
-    updates.name = name;
-  }
 
-  if (type !== undefined) {
-    if (!allowedTypes.includes(type)) {
-      return Response.json({ error: "Invalid debt type" }, { status: 400 });
+    if (type !== undefined) {
+      if (!allowedTypes.includes(type)) {
+        return Response.json({ error: "Invalid debt type" }, { status: 400 });
+      }
+      updates.type = type;
     }
-    updates.type = type;
-  }
 
-  if (balance !== undefined) {
-    if (!Number.isFinite(Number(balance)) || Number(balance) <= 0) {
-      return Response.json({ error: "Balance must be greater than zero" }, { status: 400 });
+    if (balance !== undefined) {
+      if (!Number.isFinite(Number(balance)) || Number(balance) <= 0) {
+        return Response.json({ error: "Balance must be greater than zero" }, { status: 400 });
+      }
+      updates.balance = Number(balance);
     }
-    updates.balance = Number(balance);
-  }
 
-  if (interestRate !== undefined) {
-    updates.interestRate = interestRate === null ? null : Number(interestRate);
-  }
-
-  if (minimumPayment !== undefined) {
-    if (!Number.isFinite(Number(minimumPayment)) || Number(minimumPayment) <= 0) {
-      return Response.json({ error: "Minimum payment must be greater than zero" }, { status: 400 });
+    if (interestRate !== undefined) {
+      updates.interestRate = interestRate === null ? null : Number(interestRate);
     }
-    updates.minimumPayment = Number(minimumPayment);
-  }
 
-  if (frequency !== undefined) {
-    if (!allowedFrequencies.includes(frequency as DebtFrequency)) {
-      return Response.json({ error: "Invalid frequency" }, { status: 400 });
+    if (minimumPayment !== undefined) {
+      if (!Number.isFinite(Number(minimumPayment)) || Number(minimumPayment) <= 0) {
+        return Response.json({ error: "Minimum payment must be greater than zero" }, { status: 400 });
+      }
+      updates.minimumPayment = Number(minimumPayment);
     }
-    updates.frequency = frequency as DebtFrequency;
-  }
 
-  if (dueDay !== undefined) {
-    const day = safeDay(dueDay);
-    if (dueDay !== null && day === null) {
-      return Response.json({ error: "Invalid due day" }, { status: 400 });
+    if (frequency !== undefined) {
+      if (!allowedFrequencies.includes(frequency as DebtFrequency)) {
+        return Response.json({ error: "Invalid frequency" }, { status: 400 });
+      }
+      updates.frequency = frequency as DebtFrequency;
     }
-    updates.dueDay = day;
+
+    if (dueDay !== undefined) {
+      const day = safeDay(dueDay);
+      if (dueDay !== null && day === null) {
+        return Response.json({ error: "Invalid due day" }, { status: 400 });
+      }
+      updates.dueDay = day;
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return Response.json({ error: "No fields provided to update" }, { status: 400 });
+    }
+
+    updates.updated_at = new Date();
+
+    // Ensure the record exists before updating.
+    const existing = await fetchDebt(debtId, session.user.id);
+    if (existing.error) return existing.error;
+
+    await db
+      .update(debtTable)
+      .set(updates)
+      .where(and(eq(debtTable.id, debtId), eq(debtTable.userId, session.user.id)));
+
+    const updated = await fetchDebt(debtId, session.user.id);
+    if (updated.error) return updated.error;
+
+    return Response.json(updated.data);
+  } catch (error) {
+    logError("PATCH /api/debts/[id] failed", error, { debtId, userId });
+    return Response.json({ error: "Unexpected error" }, { status: 500 });
   }
-
-  if (Object.keys(updates).length === 0) {
-    return Response.json({ error: "No fields provided to update" }, { status: 400 });
-  }
-
-  updates.updated_at = new Date();
-
-  // Ensure the record exists before updating.
-  const existing = await fetchDebt(debtId, session.user.id);
-  if (existing.error) return existing.error;
-
-  await db
-    .update(debtTable)
-    .set(updates)
-    .where(and(eq(debtTable.id, debtId), eq(debtTable.userId, session.user.id)));
-
-  const updated = await fetchDebt(debtId, session.user.id);
-  if (updated.error) return updated.error;
-
-  return Response.json(updated.data);
 }
 
 export async function DELETE(_: NextRequest, { params }: DebtParams) {
-  const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  let debtId: number | null = null;
+  let userId: string | null = null;
+  try {
+    const session = await auth.api.getSession({ headers: await headers() });
+    if (!session) return Response.json({ error: "Unauthorized" }, { status: 401 });
+    userId = session.user.id;
 
-  const { id } = await params;
-  const parsed = parseDebtId(id);
-  if ("error" in parsed) return parsed.error;
-  const debtId = parsed.debtId;
+    const { id } = await params;
+    const parsed = parseDebtId(id);
+    if ("error" in parsed) return parsed.error;
+    debtId = parsed.debtId;
 
-  const existing = await fetchDebt(debtId, session.user.id);
-  if (existing.error) return existing.error;
+    const existing = await fetchDebt(debtId, session.user.id);
+    if (existing.error) return existing.error;
 
-  await db
-    .delete(debtTable)
-    .where(and(eq(debtTable.id, debtId), eq(debtTable.userId, session.user.id)));
+    await db
+      .delete(debtTable)
+      .where(and(eq(debtTable.id, debtId), eq(debtTable.userId, session.user.id)));
 
-  return Response.json({ success: true });
+    return Response.json({ success: true });
+  } catch (error) {
+    logError("DELETE /api/debts/[id] failed", error, { debtId, userId });
+    return Response.json({ error: "Unexpected error" }, { status: 500 });
+  }
 }
 
 export const PUT = PATCH;
