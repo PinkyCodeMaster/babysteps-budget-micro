@@ -1,6 +1,6 @@
-"use client"
+"use client";
 
-import * as React from "react"
+import * as React from "react";
 import {
   IconChartBar,
   IconDashboard,
@@ -9,11 +9,11 @@ import {
   IconListDetails,
   IconSearch,
   IconSettings,
-} from "@tabler/icons-react"
+} from "@tabler/icons-react";
 
-import { NavMain } from "@/components/nav-main"
-import { NavSecondary } from "@/components/nav-secondary"
-import { NavUser } from "@/components/nav-user"
+import { NavMain } from "@/components/nav-main";
+import { NavSecondary } from "@/components/nav-secondary";
+import { NavUser } from "@/components/nav-user";
 import {
   Sidebar,
   SidebarContent,
@@ -22,9 +22,9 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from "@/components/ui/sidebar"
-import { authClient } from "@/lib/auth-client"
-import { redirect } from "next/navigation"
+} from "@/components/ui/sidebar";
+import { authClient } from "@/lib/auth-client";
+import { redirect } from "next/navigation";
 
 const navMain = [
   {
@@ -52,7 +52,7 @@ const navMain = [
     url: "/dashboard/snowball",
     icon: IconChartBar,
   },
-]
+];
 
 const navSecondary = [
   {
@@ -70,19 +70,14 @@ const navSecondary = [
     url: "#",
     icon: IconSearch,
   },
-]
+];
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const { data: session, isPending } = authClient.useSession();
 
-  const { data: session, isPending, error, refetch } = authClient.useSession()
+  if (isPending) return null;
+  if (!session) redirect("/sign-in");
 
-  if (isPending) {
-    return <></>
-  }
-
-  if (!session) {
-    redirect('sign-in')
-  }
   return (
     <Sidebar collapsible="offcanvas" {...props}>
       <SidebarHeader>
@@ -108,5 +103,5 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavUser user={session!.user} />
       </SidebarFooter>
     </Sidebar>
-  )
+  );
 }
