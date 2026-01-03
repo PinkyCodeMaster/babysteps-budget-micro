@@ -23,6 +23,7 @@ import type React from "react";
 type Debt = {
   id: number;
   name: string;
+  type: string;
   balance: number;
   interestRate: number | null;
   minimumPayment: number;
