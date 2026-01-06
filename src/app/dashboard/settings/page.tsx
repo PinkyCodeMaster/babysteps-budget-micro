@@ -39,9 +39,12 @@ async function getSettings(): Promise<{ profile: SettingsProfile; currency: stri
   if (!profile) redirect("/sign-in");
 
   const cookieStore = await cookies();
+  type CookieStoreWithGet = Awaited<ReturnType<typeof cookies>> & {
+    get?: (name: string) => { value?: string } | undefined;
+  };
   const currencyCookie =
-    typeof cookieStore?.get === "function"
-      ? cookieStore.get("currency")?.value?.toUpperCase() ?? "GBP"
+    typeof (cookieStore as CookieStoreWithGet).get === "function"
+      ? (cookieStore as CookieStoreWithGet).get?.("currency")?.value?.toUpperCase() ?? "GBP"
       : "GBP";
 
   return { profile, currency: currencyCookie };
@@ -63,9 +66,12 @@ async function updateSettings(formData: FormData): Promise<void> {
     .where(eq(userTable.id, session.user.id));
 
   const cookieStore = await cookies();
-  // Response cookies are available in server actions; guard for environments without set().
-  if (typeof (cookieStore as any)?.set === "function") {
-    (cookieStore as any).set("currency", allowedCurrency, {
+  type CookieStoreWithSet = Awaited<ReturnType<typeof cookies>> & {
+    set?: (name: string, value: string, options?: { path?: string; sameSite?: "lax" | "strict" | "none"; httpOnly?: boolean; secure?: boolean }) => void;
+  };
+  const storeWithSet = cookieStore as CookieStoreWithSet;
+  if (typeof storeWithSet.set === "function") {
+    storeWithSet.set("currency", allowedCurrency, {
       path: "/",
       sameSite: "lax",
       httpOnly: false,

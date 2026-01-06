@@ -20,6 +20,7 @@ import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import type React from "react";
 import { getOnboardingProgress } from "@/lib/onboarding";
+import Link from "next/link";
 
 type Debt = {
   id: number;
@@ -149,12 +150,13 @@ export default async function DebtsPage({
                         Download the template, upload to add debts in bulk, or export what you have.
                       </p>
                     </div>
-                    <a
+                    <Link
                       className="text-xs font-semibold text-primary underline underline-offset-4"
                       href="/api/debts/export"
+                      prefetch={false}
                     >
                       Export CSV
-                    </a>
+                    </Link>
                   </div>
                   <div className="pt-3">
                     <DebtCsvImport />

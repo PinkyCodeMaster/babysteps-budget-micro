@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Cookie, ShieldCheck, Moon, Globe } from "lucide-react";
+import { ShieldCheck, Moon, Globe } from "lucide-react";
 
 const cookies = [
   {

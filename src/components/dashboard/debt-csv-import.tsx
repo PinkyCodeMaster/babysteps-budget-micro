@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatCurrency } from "@/lib/format";
@@ -200,9 +201,9 @@ export function DebtCsvImport() {
 
       <p className="text-xs text-muted-foreground">
         Export your current debts anytime from{" "}
-        <a href="/api/debts/export" className="text-primary underline">
+        <Link href="/api/debts/export" className="text-primary underline" prefetch={false}>
           this link
-        </a>
+        </Link>
         .
       </p>
     </div>
