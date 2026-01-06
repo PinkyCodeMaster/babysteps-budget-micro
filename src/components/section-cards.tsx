@@ -16,10 +16,13 @@ type SectionCardsProps = {
   totalPaid?: string;
   snowballAvailable?: string;
   progressLabel: string;
+  monthlyIncome?: string;
+  monthlyExpenses?: string;
 };
 
 export function SectionCards(props: SectionCardsProps) {
-  const { remainingTotal, paidThisMonth, totalPaid, snowballAvailable, progressLabel } = props;
+  const { remainingTotal, paidThisMonth, totalPaid, snowballAvailable, progressLabel, monthlyIncome, monthlyExpenses } =
+    props;
   const cards = [
     {
       title: "Remaining",
@@ -46,6 +49,28 @@ export function SectionCards(props: SectionCardsProps) {
       badge: "Lifetime",
       Icon: IconWallet,
       meta: "Forward motion",
+      sub: "",
+    });
+  }
+
+  if (monthlyIncome) {
+    cards.push({
+      title: "Monthly income",
+      value: monthlyIncome,
+      badge: "Take-home",
+      Icon: IconTrendingUp,
+      meta: "What you bring in",
+      sub: "",
+    });
+  }
+
+  if (monthlyExpenses) {
+    cards.push({
+      title: "Monthly outgoings",
+      value: monthlyExpenses,
+      badge: "Spend",
+      Icon: IconTrendingDown,
+      meta: "What leaves",
       sub: "",
     });
   }

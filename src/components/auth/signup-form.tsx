@@ -46,7 +46,7 @@ export function SignupForm({
             name,
             email,
             password,
-            callbackURL: "/verify-email",
+            callbackURL: "/onboarding",
           },
           {
             onRequest: () => setLoading(true),
@@ -67,7 +67,7 @@ export function SignupForm({
         <div className="flex flex-col items-center gap-1 text-center">
           <h1 className="text-2xl font-bold">Create your account</h1>
           <p className="text-muted-foreground text-sm text-balance">
-            Fill in the form below to create your account
+            Manual-first UK debt snowball with no bank scraping. Verify your email to start onboarding.
           </p>
         </div>
 
@@ -94,8 +94,7 @@ export function SignupForm({
             disabled={loading}
           />
           <FieldDescription>
-            We&apos;ll use this to contact you. We will not share your email
-            with anyone else.
+            We&apos;ll use this for sign-in, verification, and support messages. No marketing spam or ads.
           </FieldDescription>
         </Field>
 
@@ -131,7 +130,7 @@ export function SignupForm({
 
         <Field>
           <Button type="submit" disabled={loading}>
-            {loading ? "Creating account..." : "Create Account"}
+            {loading ? "Sending verification..." : "Create account"}
           </Button>
         </Field>
 

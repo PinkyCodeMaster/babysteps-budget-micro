@@ -1,76 +1,61 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-
-type ExpenseType =
-  | "housing"
-  | "utilities"
-  | "transport"
-  | "food"
-  | "childcare"
-  | "insurance"
-  | "subscriptions"
-  | "medical"
-  | "education"
-  | "entertainment"
-  | "savings"
-  | "other"
-  | "rent"
-  | "service_charge"
-  | "council_tax"
-  | "gas"
-  | "electric"
-  | "water"
-  | "car_fuel"
-  | "groceries"
-  | "phone"
-  | "internet";
-
-type ExpenseCategory = ExpenseType;
-type ExpenseFrequency = "weekly" | "fortnightly" | "four_weekly" | "monthly" | "quarterly" | "yearly";
+import {
+  categoryOptions,
+  normalizeCurrency,
+  normalizeExpenseToMonthly,
+  subcategoryOptions,
+  ucEligibleSubcategories,
+  type ExpenseCategory,
+  type ExpenseFrequency,
+  type ExpenseType,
+} from "@/lib/expenses";
+import { formatCurrency } from "@/lib/format";
 
 export function AddExpenseForm() {
   const router = useRouter();
+  const formRef = useRef<HTMLFormElement>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [paidByUc, setPaidByUc] = useState(false);
+  const [category, setCategory] = useState<ExpenseCategory>("housing");
+  const [subcategory, setSubcategory] = useState<ExpenseType>("rent");
+  const [frequency, setFrequency] = useState<ExpenseFrequency>("monthly");
+  const [amountInput, setAmountInput] = useState<string>("");
+
+  const monthlyEstimate = useMemo(() => {
+    const parsed = Number(amountInput);
+    if (!Number.isFinite(parsed) || parsed <= 0) return 0;
+    return normalizeExpenseToMonthly(parsed, frequency);
+  }, [amountInput, frequency]);
 
   async function onSubmit(formData: FormData) {
     setLoading(true);
     setError(null);
 
-    const payload = {
-      name: formData.get("name"),
-      type: formData.get("type") as ExpenseType,
-      amount: Number(formData.get("amount")),
-      category: formData.get("category") as ExpenseCategory,
-      frequency: formData.get("frequency") as ExpenseFrequency,
-      paymentDay: Number(formData.get("paymentDay")) || undefined,
-      paidByUc: formData.get("paidByUc") === "on",
-    };
-
-    if (!payload.name || !payload.type || !payload.amount || payload.amount <= 0) {
-      setError("Please provide a name, type, and monthly amount.");
+    const amount = normalizeCurrency(formData.get("amount"));
+    if (!formData.get("name") || !amount || amount <= 0) {
+      setError("Please provide a name and an amount.");
       setLoading(false);
       return;
     }
+
+    const payload = {
+      name: formData.get("name"),
+      type: subcategory,
+      amount,
+      category,
+      frequency,
+      paymentDay: Number(formData.get("paymentDay")) || undefined,
+      paidByUc: ucEligibleSubcategories.includes(subcategory) && formData.get("paidByUc") === "on",
+    };
 
     const res = await fetch("/api/expenses", {
       method: "POST",
@@ -86,6 +71,12 @@ export function AddExpenseForm() {
     }
 
     setLoading(false);
+    (formRef.current as HTMLFormElement | null)?.reset();
+    setCategory("housing");
+    setSubcategory("rent");
+    setFrequency("monthly");
+    setPaidByUc(false);
+    setAmountInput("");
     router.refresh();
   }
 
@@ -95,89 +86,99 @@ export function AddExpenseForm() {
         <CardTitle>Add Expense</CardTitle>
       </CardHeader>
       <CardContent>
-        <form action={onSubmit} className="space-y-4">
-          <Input
-            name="name"
-            placeholder="Expense name (e.g. Rent)"
-            required
-            disabled={loading}
-          />
+        <form
+          ref={formRef}
+          className="space-y-4"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.currentTarget);
+            await onSubmit(formData);
+          }}
+        >
+          <Input name="name" placeholder="Expense name (e.g. Rent)" required disabled={loading} />
 
-          <Select
-            name="type"
-            required
-            disabled={loading}
-            defaultValue="housing"
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Expense type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="housing">Housing</SelectItem>
-              <SelectItem value="utilities">Utilities</SelectItem>
-              <SelectItem value="transport">Transport</SelectItem>
-              <SelectItem value="food">Food</SelectItem>
-              <SelectItem value="childcare">Childcare</SelectItem>
-              <SelectItem value="insurance">Insurance</SelectItem>
-              <SelectItem value="subscriptions">Subscriptions</SelectItem>
-              <SelectItem value="medical">Medical</SelectItem>
-              <SelectItem value="education">Education</SelectItem>
-              <SelectItem value="entertainment">Entertainment</SelectItem>
-              <SelectItem value="savings">Savings</SelectItem>
-              <SelectItem value="other">Other</SelectItem>
-              <SelectItem value="rent">Rent</SelectItem>
-              <SelectItem value="service_charge">Service charge</SelectItem>
-              <SelectItem value="council_tax">Council tax</SelectItem>
-              <SelectItem value="gas">Gas</SelectItem>
-              <SelectItem value="electric">Electric</SelectItem>
-              <SelectItem value="water">Water</SelectItem>
-              <SelectItem value="car_fuel">Car fuel</SelectItem>
-              <SelectItem value="groceries">Groceries</SelectItem>
-              <SelectItem value="phone">Phone</SelectItem>
-              <SelectItem value="internet">Internet</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1">
+              <Select
+                name="category"
+                required
+                disabled={loading}
+                value={category}
+                onValueChange={(v) => {
+                  const nextCategory = v as ExpenseCategory;
+                  setCategory(nextCategory);
+                  const options = subcategoryOptions[nextCategory];
+                  if (options && options.length > 0) {
+                    setSubcategory(options[0].id);
+                    setPaidByUc(false);
+                  }
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {categoryOptions.map((opt) => (
+                    <SelectItem key={opt.id} value={opt.id}>
+                      {opt.label} - {opt.description}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-          <Select name="category" required disabled={loading} defaultValue="other">
-            <SelectTrigger>
-              <SelectValue placeholder="Category" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="rent">Rent</SelectItem>
-              <SelectItem value="service_charge">Service charge</SelectItem>
-              <SelectItem value="council_tax">Council tax</SelectItem>
-              <SelectItem value="gas">Gas</SelectItem>
-              <SelectItem value="electric">Electric</SelectItem>
-              <SelectItem value="water">Water</SelectItem>
-              <SelectItem value="car_fuel">Car fuel</SelectItem>
-              <SelectItem value="groceries">Groceries</SelectItem>
-              <SelectItem value="phone">Phone</SelectItem>
-              <SelectItem value="internet">Internet</SelectItem>
-              <SelectItem value="housing">Housing</SelectItem>
-              <SelectItem value="utilities">Utilities</SelectItem>
-              <SelectItem value="transport">Transport</SelectItem>
-              <SelectItem value="food">Food</SelectItem>
-              <SelectItem value="childcare">Childcare</SelectItem>
-              <SelectItem value="insurance">Insurance</SelectItem>
-              <SelectItem value="subscriptions">Subscriptions</SelectItem>
-              <SelectItem value="medical">Medical</SelectItem>
-              <SelectItem value="education">Education</SelectItem>
-              <SelectItem value="entertainment">Entertainment</SelectItem>
-              <SelectItem value="savings">Savings</SelectItem>
-              <SelectItem value="other">Other</SelectItem>
-            </SelectContent>
-          </Select>
+            <div className="space-y-1">
+              <Select
+                name="subcategory"
+                required
+                disabled={loading}
+                value={subcategory}
+                onValueChange={(v) => {
+                  setSubcategory(v as ExpenseType);
+                  setPaidByUc(false);
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Subcategory" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(subcategoryOptions[category] ?? []).map((opt) => (
+                    <SelectItem key={opt.id} value={opt.id}>
+                      {opt.label} - {opt.description}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
 
           <Input
             name="amount"
             type="number"
-            placeholder="Monthly amount"
+            placeholder="Amount (enter the value you pay each period)"
             required
-            min={1}
+            min={0.01}
+            step="0.01"
             disabled={loading}
+            value={amountInput}
+            onChange={(e) => setAmountInput(e.target.value)}
           />
 
-          <Select name="frequency" required disabled={loading} defaultValue="monthly">
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span>Frequency</span>
+            <span>
+              {monthlyEstimate > 0
+                ? `≈ ${formatCurrency(monthlyEstimate)}/mo${paidByUc ? " (UC-covered)" : ""}`
+                : "We will convert it to per month"}
+            </span>
+          </div>
+          <Select
+            name="frequency"
+            required
+            disabled={loading}
+            value={frequency}
+            onValueChange={(v) => setFrequency(v as ExpenseFrequency)}
+          >
             <SelectTrigger>
               <SelectValue placeholder="Payment frequency" />
             </SelectTrigger>
@@ -204,12 +205,12 @@ export function AddExpenseForm() {
             <Checkbox
               name="paidByUc"
               id="paidByUc"
-              checked={paidByUc}
+              checked={paidByUc && ucEligibleSubcategories.includes(subcategory)}
               onCheckedChange={(checked) => setPaidByUc(Boolean(checked))}
-              disabled={loading}
+              disabled={loading || !ucEligibleSubcategories.includes(subcategory)}
             />
             <label htmlFor="paidByUc" className="text-sm text-foreground">
-              Paid by UC
+              Paid by UC (deducted from UC and excluded from outgoings)
             </label>
           </div>
 

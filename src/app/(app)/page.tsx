@@ -1,71 +1,135 @@
 import Link from "next/link";
-import { ArrowRight, BarChart3, CheckCircle2, Clock3, ShieldCheck, Sparkles, Wallet } from "lucide-react";
+import {
+  ArrowRight,
+  CheckCircle2,
+  Clock3,
+  CloudRain,
+  Flag,
+  MailCheck,
+  ShieldCheck,
+  Sparkles,
+  Target,
+  Wallet,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-const featureCards = [
+const heroHighlights = [
   {
-    title: "Debt clarity",
-    body: "Snowball order stays sorted with remaining, minimum, and total progress visible in one calm view.",
-    icon: Sparkles,
+    label: "Method",
+    value: "Debt snowball",
+    helper: "Ramsey-inspired, fully manual control.",
   },
   {
-    title: "Cashflow guardrails",
-    body: "Income, essentials, and U/C estimates roll up so you always know what is safe to put toward debt.",
+    label: "Built for",
+    value: "UK wages + UC",
+    helper: "Multi-payday, taper-aware guardrails.",
+  },
+  {
+    label: "Privacy",
+    value: "No bank links",
+    helper: "Data lives in Postgres you control.",
+  },
+];
+
+const featureCards = [
+  {
+    title: "Snowball autopilot",
+    body: "Smallest balances stay at the top with live remaining, so you always see the next target to clear.",
+    icon: Target,
+  },
+  {
+    title: "Cash guardrails",
+    body: "Income, UC, rent, council tax, and essentials roll into a safe-to-snowball amount that updates as you log payments.",
     icon: Wallet,
   },
   {
-    title: "Safe payments",
-    body: "Overpayment checks plus inline edit and delete keep mistakes out of your payoff rhythm.",
+    title: "Payment safety",
+    body: "Server-side validation blocks overpayments, and inline edits keep your history tidy when plans change.",
     icon: ShieldCheck,
   },
   {
-    title: "Progress you can feel",
-    body: "Dark and light themes, empty states with guidance, and totals that update the moment you act.",
-    icon: BarChart3,
+    title: "Calm to use",
+    body: "Accessible typography, thoughtful empty states, and equal care for light and dark themes keep the app welcoming.",
+    icon: Sparkles,
   },
 ];
 
 const steps = [
   {
-    title: "Frame your plan",
-    body: "Add debts with balances and minimums. We handle the snowball order and totals.",
+    title: "List debts and essentials",
+    body: "Add balances, minimums, and due dates. Flag arrears so priority items stay ahead of cards and loans.",
     time: "5 minutes",
   },
   {
-    title: "Get your monthly picture",
-    body: "Log income, essential spend, and U/C so the app shows your safe-to-use cash each month.",
-    time: "3 minutes",
+    title: "Plan your month",
+    body: "Log wages, UC, and essentials to see what is safe to snowball after housing and core bills are covered.",
+    time: "Weekly check-in",
   },
   {
-    title: "Pay with confidence",
-    body: "Hit the next target, stay within guardrails, and watch your remaining drop in real time.",
-    time: "Weekly",
+    title: "Pay in order, stay funded",
+    body: "We pin the next target, protect you from overpaying, and show progress the moment you record a payment.",
+    time: "Each payment",
   },
 ];
 
-const assurances = [
-  "No bank connections or ads - just your numbers.",
-  "Mobile-first screens with crisp dark mode.",
-  "Server-side validation and sane copy everywhere.",
+const ukReadiness = [
+  {
+    title: "UC and variable pay friendly",
+    body: "Handle UC tapering, mixed pay frequencies, and short months without losing track of your buffer.",
+    icon: Wallet,
+  },
+  {
+    title: "Priority debts protected",
+    body: "Rent, council tax, and arrears sit ahead of everything else so your snowball never starves essentials.",
+    icon: Flag,
+  },
+  {
+    title: "Evidence-ready records",
+    body: "Clear labels and export-ready data make it simple to prove payments or share summaries when needed.",
+    icon: CheckCircle2,
+  },
+  {
+    title: "No scraping or ads",
+    body: "Manual by design - no bank connections, no trackers. Just your numbers and the math you choose to share.",
+    icon: ShieldCheck,
+  },
+];
+
+const trust = [
+  {
+    title: "Production stack",
+    body: "Next.js 16 with TypeScript, shadcn/ui, Drizzle ORM, and Neon Postgres keep reads and writes fast and reliable.",
+    icon: Sparkles,
+  },
+  {
+    title: "Email and notifications",
+    body: "React Email templates with Mailpit in development and Resend in production so messages land where they should.",
+    icon: MailCheck,
+  },
+  {
+    title: "Storage and observability",
+    body: "S3-compatible storage via MinIO for exports and receipts, plus Sentry instrumentation out of the box.",
+    icon: CloudRain,
+  },
 ];
 
 export default function HomePage() {
   return (
     <main className="min-h-screen">
       <div className="container mx-auto flex flex-col gap-16 px-6 py-16">
-        <section className="grid gap-10 lg:grid-cols-[1.1fr,0.9fr] lg:items-center">
+        <section className="grid gap-10 lg:grid-cols-[1.05fr,0.95fr] lg:items-center">
           <div className="space-y-6">
-            <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-              Fresh palette, calmer layout
-            </div>
+            <Badge variant="outline" className="border-primary/30 bg-primary/10 px-3 py-1 text-primary">
+              Built for UK households using the debt snowball
+            </Badge>
             <h1 className="text-4xl font-semibold leading-tight tracking-tight sm:text-5xl">
-              A calmer way to clear debt and stay funded.
+              Pay off debt faster without giving up control.
             </h1>
             <p className="max-w-2xl text-lg text-muted-foreground">
-              BabySteps keeps your snowball, income, and expenses in one focused view. The next move is obvious,
-              guardrails are built-in, and both themes feel intentional.
+              BabySteps keeps the Ramsey-style snowball tidy for UK wages and UC. No bank connections, no ads - just a
+              calm dashboard that shows what is safe to throw at debt while protecting rent and essentials.
             </p>
             <div className="flex flex-wrap gap-3">
               <Link href="/sign-up">
@@ -74,49 +138,54 @@ export default function HomePage() {
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               </Link>
-              <Link href="/sign-in">
-                <Button variant="outline" size="lg">
-                  Sign in
+              <Link href="/#how-it-works">
+                <Button variant="outline" size="lg" className="gap-2">
+                  See how it works
+                  <ArrowRight className="h-4 w-4" />
                 </Button>
               </Link>
             </div>
-            <div className="flex flex-wrap gap-2">
-              {assurances.map((item) => (
-                <Badge key={item} variant="secondary" className="text-xs">
-                  {item}
-                </Badge>
+            <div className="grid gap-3 sm:grid-cols-3">
+              {heroHighlights.map((item) => (
+                <div key={item.label} className="rounded-xl border border-border/60 bg-card/70 px-4 py-3 shadow-sm">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{item.label}</p>
+                  <p className="text-base font-semibold text-foreground">{item.value}</p>
+                  <p className="text-xs text-muted-foreground">{item.helper}</p>
+                </div>
               ))}
             </div>
           </div>
 
-          <Card className="border border-border/60 bg-card/80 shadow-xl shadow-primary/10 backdrop-blur">
+          <Card className="border border-border/60 bg-card/85 shadow-xl shadow-primary/10 backdrop-blur">
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-lg font-semibold">Today</CardTitle>
-                <Badge variant="outline" className="text-[11px]">Live preview</Badge>
+                <CardTitle className="text-lg font-semibold">Snowball queue</CardTitle>
+                <Badge variant="outline" className="text-[11px]">
+                  Live math
+                </Badge>
               </div>
-              <p className="text-sm text-muted-foreground">How the dashboard keeps you moving.</p>
+              <p className="text-sm text-muted-foreground">Next target, safe cash to use, and guardrails in one view.</p>
             </CardHeader>
             <CardContent className="space-y-5">
               <div className="rounded-2xl border border-border/70 bg-secondary/30 p-4">
                 <p className="text-xs font-semibold uppercase text-muted-foreground">Next target</p>
                 <div className="mt-2 flex items-center justify-between">
                   <div>
-                    <p className="text-base font-semibold">Travel Visa</p>
-                    <p className="text-sm text-muted-foreground">Minimum $75 - $3,200 remaining</p>
+                    <p className="text-base font-semibold">Council tax arrears</p>
+                    <p className="text-sm text-muted-foreground">Minimum GBP 80 - GBP 1,240 remaining</p>
                   </div>
-                  <p className="text-3xl font-bold text-primary">$486</p>
+                  <p className="text-3xl font-bold text-primary">GBP 260</p>
                 </div>
                 <div className="mt-3 h-2 rounded-full bg-border/70">
-                  <div className="h-full w-[62%] rounded-full bg-primary/80" />
+                  <div className="h-full w-[58%] rounded-full bg-primary/80" />
                 </div>
               </div>
 
               <div className="grid gap-3 sm:grid-cols-3">
                 {[
-                  { label: "Available to snowball", value: "$1,240" },
-                  { label: "Paid this month", value: "$980" },
-                  { label: "Timeline", value: "8.5 months" },
+                  { label: "Safe to snowball", value: "GBP 1,120" },
+                  { label: "Paid this month", value: "GBP 940" },
+                  { label: "Estimated timeline", value: "7.5 months" },
                 ].map((stat) => (
                   <div
                     key={stat.label}
@@ -134,65 +203,77 @@ export default function HomePage() {
                   Guardrails on every payment
                 </div>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  Overpayments are blocked, edit and delete live inline, and the next target is pinned to the top.
+                  Overpayments are blocked, inline edits keep history honest, and the next target stays pinned so you
+                  never guess where to send the next pound.
                 </p>
               </div>
             </CardContent>
           </Card>
         </section>
 
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {featureCards.map((feature) => {
-            const Icon = feature.icon;
-            return (
-              <Card
-                key={feature.title}
-                className="border border-border/60 bg-card/70 shadow-sm shadow-primary/5 backdrop-blur"
-              >
-                <CardHeader className="flex flex-row items-center gap-3 pb-2">
-                  <div className="rounded-full bg-primary/10 p-2 text-primary">
-                    <Icon className="h-5 w-5" />
-                  </div>
-                  <CardTitle className="text-base font-semibold">{feature.title}</CardTitle>
-                </CardHeader>
-                <CardContent className="text-sm leading-relaxed text-muted-foreground">
-                  {feature.body}
-                </CardContent>
-              </Card>
-            );
-          })}
+        <section className="space-y-6">
+          <div className="space-y-2">
+            <Badge variant="outline" className="border-primary/30 bg-primary/10 text-primary">
+              Why BabySteps
+            </Badge>
+            <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">Built to ship, not just to demo</h2>
+            <p className="max-w-3xl text-muted-foreground">
+              The product keeps your plan honest and calm: no marketing fluff, just safeguards and clear math tuned for
+              UK households.
+            </p>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            {featureCards.map((feature) => {
+              const Icon = feature.icon;
+              return (
+                <Card
+                  key={feature.title}
+                  className="border border-border/60 bg-card/70 shadow-sm shadow-primary/5 backdrop-blur"
+                >
+                  <CardHeader className="flex flex-row items-center gap-3 pb-2">
+                    <div className="rounded-full bg-primary/10 p-2 text-primary">
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    <CardTitle className="text-base font-semibold">{feature.title}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="text-sm leading-relaxed text-muted-foreground">{feature.body}</CardContent>
+                </Card>
+              );
+            })}
+          </div>
         </section>
 
         <section id="how-it-works" className="grid gap-8 lg:grid-cols-[1fr,0.95fr] lg:items-start">
           <Card className="border border-border/60 bg-card/80 shadow-sm shadow-primary/10 backdrop-blur">
             <CardHeader className="pb-2">
-              <CardTitle className="text-lg font-semibold">Stay in motion</CardTitle>
+              <CardTitle className="text-lg font-semibold">How the snowball runs here</CardTitle>
               <p className="text-sm text-muted-foreground">
-                Light and dark get equal care. Inputs, charts, and cards use the same calm palette so every state feels
-                intentional.
+                The product uses the classic method - smallest to largest - while protecting essentials and priority
+                debts first.
               </p>
             </CardHeader>
             <CardContent className="space-y-3 text-sm text-muted-foreground">
               <div className="flex items-center gap-2 text-foreground">
                 <Sparkles className="h-4 w-4 text-primary" />
-                <span className="font-medium">Guided empty states</span>
+                <span className="font-medium">Guided from step one</span>
               </div>
               <p className="pl-6">
-                New users see exactly what to add first, with inline copy that works in both themes.
+                Empty states explain what to add next, and we match tone across light and dark for readability.
               </p>
               <div className="flex items-center gap-2 text-foreground">
                 <CheckCircle2 className="h-4 w-4 text-primary" />
-                <span className="font-medium">Cleaner typography</span>
+                <span className="font-medium">Server-first validation</span>
               </div>
               <p className="pl-6">
-                Geist pairs with softer cards and borders for better legibility and contrast across the app.
+                Payments, balances, and UC taper inputs are checked on the server to keep data consistent.
               </p>
               <div className="flex items-center gap-2 text-foreground">
                 <Clock3 className="h-4 w-4 text-primary" />
-                <span className="font-medium">Fast paths to action</span>
+                <span className="font-medium">Fast to keep up</span>
               </div>
               <p className="pl-6">
-                Sign up, sign in, and legal pages now share the same layout rhythm and spacing.
+                Auth, dashboards, and legal pages share the same spacing rhythm so you spend less time thinking about
+                navigation.
               </p>
             </CardContent>
           </Card>
@@ -218,19 +299,52 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section className="grid gap-6 lg:grid-cols-[0.95fr,1.05fr] lg:items-center">
+        <section className="space-y-6">
+          <div className="space-y-2">
+            <Badge variant="outline" className="border-primary/30 bg-primary/10 text-primary">
+              UK realities, not hypotheticals
+            </Badge>
+            <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">Built around real UK obligations</h2>
+            <p className="max-w-3xl text-muted-foreground">
+              From UC tapering to council tax and arrears, the app is tuned for the bills that come first in the UK.
+            </p>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            {ukReadiness.map((item) => {
+              const Icon = item.icon;
+              return (
+                <Card
+                  key={item.title}
+                  className="border border-border/60 bg-card/70 shadow-sm shadow-primary/5 backdrop-blur"
+                >
+                  <CardHeader className="flex flex-row items-center gap-3 pb-2">
+                    <div className="rounded-full bg-primary/10 p-2 text-primary">
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    <CardTitle className="text-base font-semibold">{item.title}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="text-sm leading-relaxed text-muted-foreground">{item.body}</CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </section>
+
+        <section className="grid gap-6 lg:grid-cols-[0.95fr,1.05fr] lg:items-center" id="trust">
           <Card className="border border-border/60 bg-card/80 shadow-sm shadow-primary/10 backdrop-blur">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-lg font-semibold">Built for real life budgeting</CardTitle>
-                <Badge variant="outline" className="text-[11px]">No gimmicks</Badge>
+                <CardTitle className="text-lg font-semibold">Ready for production use</CardTitle>
+                <Badge variant="outline" className="text-[11px]">
+                  No shortcuts
+                </Badge>
               </div>
             </CardHeader>
             <CardContent className="space-y-2 text-sm leading-relaxed text-muted-foreground">
-              <p>Manual by design so you stay in control. No scraping, no ads, just the math you trust.</p>
-              <p>Dark and light palettes share the same contrast ratios, so content stays readable everywhere.</p>
+              <p>Manual-first by choice so you stay in control. No scraping, no ads, just the math you trust.</p>
+              <p>Light and dark palettes share contrast ratios, so content stays readable everywhere.</p>
               <p className="font-medium text-foreground">
-                When you are ready, the dashboard keeps its current layout - only the colors and support pages get the refresh.
+                The dashboard stays focused on action: debts, payments, and cashflow with guardrails on every update.
               </p>
             </CardContent>
           </Card>
@@ -239,9 +353,9 @@ export default function HomePage() {
             <CardContent className="flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
               <div className="space-y-2">
                 <p className="text-sm font-semibold uppercase tracking-wide text-primary">Start now</p>
-                <p className="text-2xl font-semibold text-foreground">Get a calmer budgeting workspace in minutes.</p>
+                <p className="text-2xl font-semibold text-foreground">Get a production-ready snowball workspace.</p>
                 <p className="text-sm text-muted-foreground">
-                  Create an account, add your numbers, and let the app keep your snowball on track.
+                  Create an account, add your numbers, and let the app keep your plan on the rails.
                 </p>
               </div>
               <div className="flex flex-col gap-2 sm:w-44">
@@ -251,14 +365,34 @@ export default function HomePage() {
                     <ArrowRight className="h-4 w-4" />
                   </Button>
                 </Link>
-                <Link href="/techstack">
+                <Link href="/about">
                   <Button variant="outline" className="w-full">
-                    View the stack
+                    See how we build
                   </Button>
                 </Link>
               </div>
             </CardContent>
           </Card>
+        </section>
+
+        <section className="grid gap-4 lg:grid-cols-3">
+          {trust.map((item) => {
+            const Icon = item.icon;
+            return (
+              <Card
+                key={item.title}
+                className="border border-border/60 bg-card/80 shadow-sm shadow-primary/5 backdrop-blur"
+              >
+                <CardHeader className="flex flex-row items-center gap-3 pb-2">
+                  <div className="rounded-full bg-primary/10 p-2 text-primary">
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <CardTitle className="text-base font-semibold">{item.title}</CardTitle>
+                </CardHeader>
+                <CardContent className="text-sm leading-relaxed text-muted-foreground">{item.body}</CardContent>
+              </Card>
+            );
+          })}
         </section>
       </div>
     </main>

@@ -32,9 +32,11 @@ export function AddDebtForm() {
     const payload = {
       name: formData.get("name"),
       type: formData.get("type"),
-      balance: Number(formData.get("balance")),
-      interestRate: Number(formData.get("interestRate")) || 0,
-      minimumPayment: Number(formData.get("minimumPayment")),
+      balance: Math.round(Number(formData.get("balance")) * 100) / 100,
+      interestRate: formData.get("interestRate") ? Math.round(Number(formData.get("interestRate")) * 100) / 100 : null,
+      minimumPayment: formData.get("minimumPayment")
+        ? Math.round(Number(formData.get("minimumPayment")) * 100) / 100
+        : null,
       frequency: formData.get("frequency"),
       dueDay: Number(formData.get("dueDay")) || undefined,
     };
@@ -143,7 +145,8 @@ export function AddDebtForm() {
             type="number"
             placeholder="Starting balance"
             required
-            min={1}
+            min={0.01}
+            step="0.01"
             disabled={loading}
           />
 
@@ -151,15 +154,17 @@ export function AddDebtForm() {
             name="interestRate"
             type="number"
             placeholder="Interest rate (%)"
+            min={0}
+            step="0.01"
             disabled={loading}
           />
 
           <Input
             name="minimumPayment"
             type="number"
-            placeholder="Minimum payment"
-            required
-            min={1}
+            placeholder="Minimum payment (optional)"
+            min={0.01}
+            step="0.01"
             disabled={loading}
           />
 

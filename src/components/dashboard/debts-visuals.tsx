@@ -16,7 +16,8 @@ import {
 type DebtSlice = {
   name: string;
   remainingBalance: number;
-  minimumPayment: number;
+  minimumPayment: number | null;
+  type?: string | null;
 };
 
 type Summary = {
@@ -35,9 +36,18 @@ const palette = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--ch
 export function DebtsVisuals({ debts, summary }: Props) {
   const activeDebts = debts.filter((d) => d.remainingBalance > 0);
 
-  const minBars = activeDebts.map((d) => ({
+  const orderedDebts = [...activeDebts].sort((a, b) => {
+    const aCcj = (a.type ?? "").toLowerCase() === "ccj";
+    const bCcj = (b.type ?? "").toLowerCase() === "ccj";
+    if (aCcj !== bCcj) return aCcj ? -1 : 1;
+    const aRemaining = Number.isFinite(a.remainingBalance) ? a.remainingBalance : Number.MAX_SAFE_INTEGER;
+    const bRemaining = Number.isFinite(b.remainingBalance) ? b.remainingBalance : Number.MAX_SAFE_INTEGER;
+    return aRemaining - bRemaining;
+  });
+
+  const minBars = orderedDebts.map((d) => ({
     name: d.name,
-    value: d.minimumPayment,
+    value: Math.max(0, Number.isFinite(d.minimumPayment ?? NaN) ? (d.minimumPayment as number) : 0),
   }));
 
   const progressData = [
@@ -53,11 +63,11 @@ export function DebtsVisuals({ debts, summary }: Props) {
           <span>{activeDebts.length ? "Remaining by debt" : "All clear"}</span>
         </div>
         <div className="h-64">
-          {activeDebts.length ? (
+          {orderedDebts.length ? (
             <ResponsiveContainer>
               <PieChart>
-                <Pie data={activeDebts} dataKey="remainingBalance" nameKey="name" innerRadius={60} outerRadius={90} paddingAngle={2}>
-                  {activeDebts.map((_, idx) => (
+                <Pie data={orderedDebts} dataKey="remainingBalance" nameKey="name" innerRadius={60} outerRadius={90} paddingAngle={2}>
+                  {orderedDebts.map((_, idx) => (
                     <Cell key={idx} fill={palette[idx % palette.length]} />
                   ))}
                 </Pie>

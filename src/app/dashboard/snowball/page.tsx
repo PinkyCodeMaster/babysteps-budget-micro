@@ -11,7 +11,13 @@ import { DebtsVisuals } from "@/components/dashboard/debts-visuals";
 import { DeleteDebtButton } from "@/components/dashboard/delete-debt-button";
 import { EditDebtForm } from "@/components/dashboard/edit-debt-form";
 import { auth } from "@/lib/auth";
-import { calculateUcPayment, estimateNetMonthly, type IncomeType } from "@/lib/income-logic";
+import {
+  calculateUcPayment,
+  estimateNetMonthly,
+  defaultHoursGuess,
+  type IncomeType,
+  type IncomeCategory,
+} from "@/lib/income-logic";
 import { calculateProgress, sortDebts, type SortKey } from "@/lib/debt-logic";
 import { formatCurrency } from "@/lib/format";
 import { db } from "@/db";
@@ -20,6 +26,7 @@ import { eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import type React from "react";
+import { formatExpenseAmounts, type ExpenseFrequency } from "@/lib/expenses";
 
 type Debt = {
   id: number;
@@ -27,11 +34,34 @@ type Debt = {
   type: string;
   balance: number;
   interestRate: number | null;
-  minimumPayment: number;
+  minimumPayment: number | null;
+  remainingBalance: number;
+  dueDay: number | null;
   payments: { amount: number; paymentDate: string }[];
 };
 
-type DebtWithTotals = Debt & { totalPaid: number; remainingBalance: number };
+type DebtWithTotals = Debt & { totalPaid: number };
+
+type Income = {
+  id: number;
+  name: string;
+  type: IncomeType;
+  amount: number;
+  hoursPerWeek: number | null;
+  category?: IncomeCategory | null;
+  netMonthly: number;
+};
+
+type Expense = {
+  id: number;
+  name: string;
+  type: string;
+  amount: number;
+  frequency: ExpenseFrequency;
+  monthlyAmount: number;
+  monthlyOutOfPocket: number;
+  paidByUc?: boolean;
+};
 
 async function loadSnowball(sort: SortKey) {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -42,69 +72,147 @@ async function loadSnowball(sort: SortKey) {
     where: eq(debtTable.userId, session.user.id),
   });
 
-  const expenses = await db.query.expenseTable.findMany({
+  const expensesRaw = await db.query.expenseTable.findMany({
     where: eq(expenseTable.userId, session.user.id),
   });
   const incomesRaw = await db.query.incomeTable.findMany({
     where: eq(incomeTable.userId, session.user.id),
   });
 
-  const incomes = incomesRaw.map((income) => ({
-    ...income,
-    netMonthly: estimateNetMonthly({
-      type: income.type as IncomeType,
-      amount: income.amount,
-      hoursPerWeek: income.hoursPerWeek,
-    }),
-  }));
+  const incomes: Income[] = incomesRaw.map((income) => {
+    const rawAmount = Number(income.amount);
+    const amount = Number.isFinite(rawAmount) ? rawAmount : 0;
+    const rawHours = income.hoursPerWeek === null ? null : Number(income.hoursPerWeek);
+    const hours = rawHours !== null && Number.isFinite(rawHours) ? rawHours : null;
+    const category = (income.category as IncomeCategory | null) ?? null;
+    const hoursForNet =
+      income.type === "hourly"
+        ? hours === null || hours <= 0
+          ? defaultHoursGuess
+          : hours
+        : hours;
+    return {
+      ...income,
+      amount,
+      hoursPerWeek: hours,
+      category,
+      netMonthly: estimateNetMonthly({
+        type: income.type as IncomeType,
+        amount,
+        hoursPerWeek: hoursForNet,
+      }),
+    };
+  });
 
   const ucCandidate =
     incomes.find((inc) => inc.type === "uc") ||
-    incomes.find((inc) => inc.name.toLowerCase().includes("universal"));
+    incomes.find((inc) => inc.name.toLowerCase().includes("universal")) ||
+    incomes.find((inc) => inc.name.toLowerCase().includes("uc")) ||
+    incomes.find((inc) => (inc.category ?? "").toLowerCase() === "uc");
 
-  const ucBase = ucCandidate ? ucCandidate.netMonthly : Number(process.env.UC_BASE_MONTHLY ?? 0);
-  const taperIgnore = Number(process.env.UC_TAPER_DISREGARD ?? 411);
-  const taperRate = Number(process.env.UC_TAPER_RATE ?? 0.55);
+  const baseFromEnv = Number(process.env.UC_BASE_MONTHLY ?? 0);
+  const disregardFromEnv = Number(process.env.UC_TAPER_DISREGARD ?? 411);
+  const taperRateFromEnv = Number(process.env.UC_TAPER_RATE ?? 0.55);
+  const ucBaseEnv = Number.isFinite(baseFromEnv) ? baseFromEnv : 0;
+  const taperIgnore = Number.isFinite(disregardFromEnv) ? disregardFromEnv : 411;
+  const taperRate = Number.isFinite(taperRateFromEnv) ? taperRateFromEnv : 0.55;
+  const ucBase =
+    ucCandidate && Number.isFinite(ucCandidate.netMonthly) ? ucCandidate.netMonthly : ucBaseEnv;
+
+  const expensesWithMonthly: Expense[] = expensesRaw.map((exp) => {
+    const rawAmount = Number(exp.amount);
+    const amount = Number.isFinite(rawAmount) ? rawAmount : 0;
+    const frequency = exp.frequency as ExpenseFrequency;
+    const { monthlyAmount, monthlyOutOfPocket } = formatExpenseAmounts({
+      amount,
+      frequency,
+      paidByUc: exp.paidByUc,
+    });
+    return { ...exp, amount, frequency, monthlyAmount, monthlyOutOfPocket, paidByUc: exp.paidByUc };
+  });
+  const paidByUcMonthly = expensesWithMonthly
+    .filter((exp) => exp.paidByUc)
+    .reduce((sum, exp) => sum + (Number.isFinite(exp.monthlyAmount) ? exp.monthlyAmount : 0), 0);
+  const monthlyExpenses = expensesWithMonthly.reduce(
+    (sum, exp) => sum + (Number.isFinite(exp.monthlyOutOfPocket) ? exp.monthlyOutOfPocket : 0),
+    0
+  );
+
   const ucPayment = calculateUcPayment({
     incomes,
     base: ucBase,
     taperIgnore,
     taperRate,
+    paidByUcMonthly,
   });
   const incomesWithoutUc = incomes.filter(
     (inc) => inc !== ucCandidate && inc.type !== "uc"
   );
-  const monthlyIncome = incomesWithoutUc.reduce((sum, inc) => sum + inc.netMonthly, 0);
-  const householdIncome = monthlyIncome + ucPayment;
-  const monthlyExpenses = expenses.reduce((sum, exp) => sum + exp.amount, 0);
+  const monthlyIncome = incomesWithoutUc.reduce(
+    (sum, inc) => sum + (Number.isFinite(inc.netMonthly) ? inc.netMonthly : 0),
+    0
+  );
+  const ucPaymentSafe = Number.isFinite(ucPayment) ? ucPayment : 0;
+  const householdIncome = monthlyIncome + ucPaymentSafe;
 
   const enriched: DebtWithTotals[] = debts.map((debt) => {
-    const totalPaid = debt.payments.reduce((sum, p) => sum + p.amount, 0);
-    const remainingBalance = debt.balance - totalPaid;
-    return { ...debt, totalPaid, remainingBalance };
+    const payments = debt.payments.map((p) => {
+      const rawAmount = Number(p.amount);
+      const amount = Number.isFinite(rawAmount) ? rawAmount : 0;
+      return { ...p, amount };
+    });
+    const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
+    const rawBalance = Number(debt.balance);
+    const balance = Number.isFinite(rawBalance) ? rawBalance : 0;
+    const rawRate = debt.interestRate === null ? null : Number(debt.interestRate);
+    const interestRate = rawRate !== null && Number.isFinite(rawRate) ? rawRate : null;
+    const rawMinimum = debt.minimumPayment === null ? null : Number(debt.minimumPayment);
+    const minimumPayment = rawMinimum !== null && Number.isFinite(rawMinimum) ? rawMinimum : null;
+    const rawDueDay = debt.dueDay === null || debt.dueDay === undefined ? null : Number(debt.dueDay);
+    const dueDay = rawDueDay !== null && Number.isInteger(rawDueDay) ? rawDueDay : null;
+    const remainingBalance = balance - totalPaid;
+    return { ...debt, balance, interestRate, minimumPayment, totalPaid, remainingBalance, payments, dueDay };
   });
 
   const sorted = sortDebts(enriched, sort);
-  const totalMinimums = enriched.reduce((sum, d) => sum + d.minimumPayment, 0);
+  const totalMinimums = enriched.reduce((sum, d) => {
+    const min = d.minimumPayment ?? 0;
+    return sum + (Number.isFinite(min) ? min : 0);
+  }, 0);
   const netCashflow = householdIncome - monthlyExpenses;
   const snowballAvailable = Math.max(0, netCashflow - totalMinimums);
-  const next = sorted[0];
+  const activeForSnowball = sorted.filter((d) => d.remainingBalance > 0);
+  let remainingSnowball = snowballAvailable;
+  const clearableThisMonth: DebtWithTotals[] = [];
+  let nextAfterClear: DebtWithTotals | null = null;
+
+  for (const debt of activeForSnowball) {
+    const needed = Math.max(0, debt.remainingBalance);
+    if (needed === 0) continue;
+    if (remainingSnowball >= needed) {
+      clearableThisMonth.push(debt);
+      remainingSnowball -= needed;
+    } else {
+      nextAfterClear = debt;
+      break;
+    }
+  }
+
+  const next = activeForSnowball[0];
+  const nextMinimum = next && Number.isFinite(next.minimumPayment ?? NaN) ? (next.minimumPayment as number) : 0;
   const monthsToClearNext =
     next && next.remainingBalance > 0
-      ? Math.ceil(next.remainingBalance / Math.max(1, next.minimumPayment + snowballAvailable))
+      ? Math.ceil(next.remainingBalance / Math.max(1, nextMinimum + snowballAvailable))
       : 0;
 
-  const totalDebt = debts.reduce((sum, d) => sum + d.balance, 0);
-  const totalPaid = debts.reduce(
-    (sum, d) => sum + d.payments.reduce((pSum, p) => pSum + p.amount, 0),
-    0
-  );
+  const totalDebt = enriched.reduce((sum, d) => sum + (Number.isFinite(d.balance) ? d.balance : 0), 0);
+  const totalPaid = enriched.reduce((sum, d) => sum + (Number.isFinite(d.totalPaid) ? d.totalPaid : 0), 0);
 
   return {
     debts: sorted,
     summary: {
       monthlyIncome,
-      ucPayment,
+      ucPayment: ucPaymentSafe,
       householdIncome,
       monthlyExpenses,
       netCashflow,
@@ -115,6 +223,15 @@ async function loadSnowball(sort: SortKey) {
       totalDebt,
       totalPaid,
       progressPercent: calculateProgress(totalDebt, totalPaid),
+      payoffPreview: {
+        cleared: clearableThisMonth,
+        remainingSnowball,
+        nextDebt: nextAfterClear,
+        nextShortfall:
+          nextAfterClear !== null
+            ? Math.max(0, nextAfterClear.remainingBalance - remainingSnowball)
+            : null,
+      },
     },
   };
 }
@@ -196,26 +313,66 @@ export default async function SnowballPage({
                 {data.summary.nextDebt && (
                   <Card className="md:col-span-3">
                     <CardHeader>
-                      <CardTitle className="text-sm font-medium text-muted-foreground">
-                        Next payoff target (snowball order)
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="flex flex-wrap items-center gap-3">
-                      <div className="space-y-1">
-                        <p className="text-base font-semibold">
-                          {data.summary.nextDebt.name}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          Remaining {formatCurrency(data.summary.nextDebt.remainingBalance)}
-                        </p>
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Next payoff target (CCJs first, then snowball)
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="flex flex-col gap-3">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <div className="space-y-1">
+                      <p className="text-base font-semibold">
+                        {data.summary.nextDebt.name}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        Remaining {formatCurrency(data.summary.nextDebt.remainingBalance)}
+                      </p>
+                    </div>
+                    {data.summary.nextDebt.type === "ccj" && (
+                      <Badge variant="destructive">Priority CCJ</Badge>
+                    )}
+                    <Badge variant="outline">
+                      Extra snowball {formatCurrency(data.summary.snowballAvailable)}
+                    </Badge>
+                    <Badge variant="secondary">
+                      Est. {data.summary.monthsToClearNext} months to clear
+                    </Badge>
+                  </div>
+
+                  {data.summary.payoffPreview.cleared.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                      <span>
+                        This month, your snowball can fully clear {data.summary.payoffPreview.cleared.length} debt
+                        {data.summary.payoffPreview.cleared.length === 1 ? "" : "s"}:
+                      </span>
+                      <div className="flex flex-wrap gap-2">
+                        {data.summary.payoffPreview.cleared.slice(0, 3).map((debt) => (
+                          <Badge key={debt.id} variant="outline">
+                            {debt.name}
+                          </Badge>
+                        ))}
+                        {data.summary.payoffPreview.cleared.length > 3 && (
+                          <Badge variant="secondary">
+                            +{data.summary.payoffPreview.cleared.length - 3} more
+                          </Badge>
+                        )}
                       </div>
-                      <Badge variant="outline">
-                        Extra snowball {formatCurrency(data.summary.snowballAvailable)}
-                      </Badge>
-                      <Badge variant="secondary">
-                        Est. {data.summary.monthsToClearNext} months to clear
-                      </Badge>
-                    </CardContent>
+                    </div>
+                  )}
+
+                  {data.summary.payoffPreview.nextDebt && (
+                    <p className="text-xs text-muted-foreground">
+                      After those, you will have {formatCurrency(data.summary.payoffPreview.remainingSnowball)} left; you
+                      need {formatCurrency(data.summary.payoffPreview.nextShortfall ?? 0)} more to clear{" "}
+                      {data.summary.payoffPreview.nextDebt.name}.
+                    </p>
+                  )}
+                  {!data.summary.payoffPreview.nextDebt &&
+                    data.summary.payoffPreview.cleared.length > 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        Your current snowball could clear every remaining debt this month.
+                      </p>
+                    )}
+                </CardContent>
                   </Card>
                 )}
               </div>
@@ -236,20 +393,21 @@ export default async function SnowballPage({
                   </p>
                 )}
                 {data.debts.map((debt, idx) => (
-                  <Card key={debt.id} className="border border-border/70 bg-card/80 shadow-sm shadow-primary/5 backdrop-blur">
-                    <CardHeader className="pb-3">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <Badge variant="outline">#{idx + 1}</Badge>
-                            <CardTitle className="text-base font-semibold">
-                              {debt.name}
-                            </CardTitle>
-                          </div>
-                          <p className="text-sm text-muted-foreground">
-                            Remaining {formatCurrency(debt.remainingBalance)} - Minimum{" "}
-                            {formatCurrency(debt.minimumPayment)}
-                          </p>
+                    <Card key={debt.id} className="border border-border/70 bg-card/80 shadow-sm shadow-primary/5 backdrop-blur">
+                      <CardHeader className="pb-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline">#{idx + 1}</Badge>
+                              <CardTitle className="text-base font-semibold">
+                                {debt.name}
+                              </CardTitle>
+                              {debt.type === "ccj" && <Badge variant="destructive">Priority CCJ</Badge>}
+                            </div>
+                            <p className="text-sm text-muted-foreground">
+                              Remaining {formatCurrency(debt.remainingBalance)} - Minimum{" "}
+                              {formatCurrency(debt.minimumPayment ?? 0)}
+                            </p>
                         </div>
                         <div className="flex gap-2">
                           <EditDebtForm debt={debt} />

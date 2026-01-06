@@ -2,64 +2,22 @@ import { headers } from "next/headers";
 import type { NextRequest } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
-import { expenseTable } from "@/db/schema";
+import { expenseTable, expenseFrequencyEnum } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
 import { logError } from "@/lib/logger";
+import {
+  deriveCategory,
+  formatExpenseAmounts,
+  isExpenseCategory,
+  isExpenseType,
+  normalizeCurrency,
+  type ExpenseCategory,
+  type ExpenseFrequency,
+  type ExpenseType,
+  ucEligibleSubcategories,
+} from "@/lib/expenses";
 
-type ExpenseType =
-  | "housing"
-  | "utilities"
-  | "transport"
-  | "food"
-  | "childcare"
-  | "insurance"
-  | "subscriptions"
-  | "medical"
-  | "education"
-  | "entertainment"
-  | "savings"
-  | "other"
-  | "rent"
-  | "service_charge"
-  | "council_tax"
-  | "gas"
-  | "electric"
-  | "water"
-  | "car_fuel"
-  | "groceries"
-  | "phone"
-  | "internet";
-
-type ExpenseCategory = ExpenseType;
-type ExpenseFrequency = "weekly" | "fortnightly" | "four_weekly" | "monthly" | "quarterly" | "yearly";
-
-const allowedTypes: ExpenseType[] = [
-  "housing",
-  "utilities",
-  "transport",
-  "food",
-  "childcare",
-  "insurance",
-  "subscriptions",
-  "medical",
-  "education",
-  "entertainment",
-  "savings",
-  "other",
-  "rent",
-  "service_charge",
-  "council_tax",
-  "gas",
-  "electric",
-  "water",
-  "car_fuel",
-  "groceries",
-  "phone",
-  "internet",
-];
-
-const allowedCategories: ExpenseCategory[] = allowedTypes;
-const allowedFrequencies: ExpenseFrequency[] = ["weekly", "fortnightly", "four_weekly", "monthly", "quarterly", "yearly"];
+const allowedFrequencies: ExpenseFrequency[] = expenseFrequencyEnum.enumValues;
 
 function safeDay(value?: number | null) {
   if (Number.isInteger(Number(value)) && Number(value) >= 1 && Number(value) <= 31) {
@@ -82,15 +40,28 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       return Response.json({ error: "Invalid expense id" }, { status: 400 });
     }
 
-    const expense = await db.query.expenseTable.findFirst({
+    const expenseRaw = await db.query.expenseTable.findFirst({
       where: and(eq(expenseTable.id, expenseId), eq(expenseTable.userId, session.user.id)),
     });
 
-    if (!expense) {
+    if (!expenseRaw) {
       return Response.json({ error: "Expense not found" }, { status: 404 });
     }
 
-    return Response.json(expense);
+    const { monthlyAmount, monthlyOutOfPocket } = formatExpenseAmounts({
+      amount: Number(expenseRaw.amount),
+      frequency: expenseRaw.frequency as ExpenseFrequency,
+      paidByUc: expenseRaw.paidByUc,
+    });
+
+    return Response.json({
+      ...expenseRaw,
+      amount: Number(expenseRaw.amount),
+      category: expenseRaw.category as ExpenseCategory,
+      frequency: expenseRaw.frequency as ExpenseFrequency,
+      monthlyAmount,
+      monthlyOutOfPocket,
+    });
   } catch (error) {
     logError("GET /api/expenses/[id] failed", error, { expenseId, userId });
     return Response.json({ error: "Unexpected error" }, { status: 500 });
@@ -122,27 +93,31 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       paidByUc: boolean;
     }>;
 
-    if (!name || name.length > 255 || !type || !allowedTypes.includes(type)) {
+    if (!name || name.length > 255 || !type || !isExpenseType(type)) {
       return Response.json({ error: "Please provide a valid name and type." }, { status: 400 });
     }
 
-    if (!Number.isFinite(Number(amount)) || Number(amount) <= 0) {
+    const safeAmount = normalizeCurrency(amount);
+    if (!Number.isFinite(safeAmount) || safeAmount <= 0) {
       return Response.json({ error: "Amount must be greater than zero." }, { status: 400 });
     }
 
-    const safeCategory = allowedCategories.includes(category as ExpenseCategory) ? (category as ExpenseCategory) : "other";
     const safeFrequency = allowedFrequencies.includes(frequency as ExpenseFrequency)
       ? (frequency as ExpenseFrequency)
       : "monthly";
+    const safeCategory = deriveCategory(
+      isExpenseCategory(category) ? category : null,
+      type
+    );
     const safePaymentDay = safeDay(paymentDay);
-    const paidByUcValue = Boolean(paidByUc);
+    const paidByUcValue = Boolean(paidByUc) && ucEligibleSubcategories.includes(type);
 
     const updated = await db
       .update(expenseTable)
       .set({
         name,
         type,
-        amount: Number(amount),
+        amount: safeAmount,
         category: safeCategory,
         frequency: safeFrequency,
         paymentDay: safePaymentDay,

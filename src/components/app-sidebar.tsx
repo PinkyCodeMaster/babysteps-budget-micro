@@ -57,12 +57,12 @@ const navMain = [
 const navSecondary = [
   {
     title: "Settings",
-    url: "/dashboard/account",
+    url: "/dashboard/settings",
     icon: IconSettings,
   },
   {
     title: "Get Help",
-    url: "/help",
+    url: "/dashboard/help",
     icon: IconHelp,
   },
 ];

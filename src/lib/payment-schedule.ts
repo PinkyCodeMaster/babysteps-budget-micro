@@ -1,6 +1,7 @@
 import { addMonths, addWeeks, startOfDay } from "date-fns";
 
 export type PaymentFrequency = "weekly" | "fortnightly" | "four_weekly" | "monthly" | "quarterly" | "yearly";
+type AdjustDirection = "forward" | "backward";
 
 // Minimal UK bank holidays list; extend as needed. Format: YYYY-MM-DD.
 const UK_BANK_HOLIDAYS = new Set<string>([
@@ -23,7 +24,10 @@ const UK_BANK_HOLIDAYS = new Set<string>([
 ]);
 
 function formatISO(date: Date) {
-  return date.toISOString().split("T")[0];
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
 }
 
 function isWeekend(date: Date) {
@@ -35,10 +39,11 @@ function isHoliday(date: Date, holidays: Set<string>) {
   return holidays.has(formatISO(date));
 }
 
-function nextWorkingDay(date: Date, holidays: Set<string>) {
+function adjustWorkingDay(date: Date, holidays: Set<string>, direction: AdjustDirection = "forward") {
   const candidate = new Date(date);
+  const delta = direction === "forward" ? 1 : -1;
   while (isWeekend(candidate) || isHoliday(candidate, holidays)) {
-    candidate.setDate(candidate.getDate() + 1);
+    candidate.setDate(candidate.getDate() + delta);
   }
   return candidate;
 }
@@ -46,7 +51,15 @@ function nextWorkingDay(date: Date, holidays: Set<string>) {
 function baseDateFromDueDay(from: Date, dueDay: number, frequency: PaymentFrequency) {
   const base = new Date(from);
   if (frequency === "weekly") {
-    return addWeeks(startOfDay(base), 1);
+    const targetDow = dueDay >= 1 && dueDay <= 7 ? dueDay : base.getDay() || 7; // Monday=1 ... Sunday=7
+    const currentDow = base.getDay() === 0 ? 7 : base.getDay();
+    const diff = targetDow - currentDow;
+    const candidate = startOfDay(base);
+    candidate.setDate(candidate.getDate() + (diff >= 0 ? diff : diff + 7));
+    if (candidate <= base) {
+      candidate.setDate(candidate.getDate() + 7);
+    }
+    return candidate;
   }
   if (frequency === "fortnightly") {
     return addWeeks(startOfDay(base), 2);
@@ -79,16 +92,36 @@ function baseDateFromDueDay(from: Date, dueDay: number, frequency: PaymentFreque
 
 export function getNextPaymentDate({
   dueDay,
+  mode = "forward",
+  useLastWorkingDay = false,
   frequency = "monthly",
   from = new Date(),
   holidays = UK_BANK_HOLIDAYS,
 }: {
   dueDay: number;
+  mode?: AdjustDirection;
+  useLastWorkingDay?: boolean;
   frequency?: PaymentFrequency;
   from?: Date;
   holidays?: Set<string>;
 }) {
-  const base = baseDateFromDueDay(from, dueDay, frequency);
-  const adjusted = nextWorkingDay(base, holidays);
+  let base: Date;
+
+  if (useLastWorkingDay && frequency === "monthly") {
+    const month = from.getMonth();
+    const year = from.getFullYear();
+    const lastDayOfMonth = new Date(year, month + 1, 0);
+    const lastWorkingThisMonth = adjustWorkingDay(lastDayOfMonth, holidays, "backward");
+    if (lastWorkingThisMonth > from) {
+      base = lastWorkingThisMonth;
+    } else {
+      const nextMonthLast = new Date(year, month + 2, 0);
+      base = adjustWorkingDay(nextMonthLast, holidays, "backward");
+    }
+  } else {
+    base = baseDateFromDueDay(from, dueDay, frequency);
+  }
+
+  const adjusted = adjustWorkingDay(base, holidays, mode);
   return { base: formatISO(base), adjusted: formatISO(adjusted), adjustedDate: adjusted };
 }

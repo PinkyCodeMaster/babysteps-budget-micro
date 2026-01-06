@@ -13,15 +13,24 @@ import { formatCurrency } from "@/lib/format";
 import {
   estimateNetMonthly,
   calculateUcPayment,
+  inferBasisFromIncome,
+  denormalizeIncomeAmount,
+  defaultHoursGuess,
+  type IncomeBasis,
   type IncomeType,
+  type IncomeCategory,
+  type PaymentFrequency,
 } from "@/lib/income-logic";
+import { getOnboardingProgress } from "@/lib/onboarding";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EditIncomeForm } from "@/components/dashboard/edit-income-form";
+import { expenseTable } from "@/db/schema";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import type React from "react";
+import { formatExpenseAmounts, type ExpenseFrequency } from "@/lib/expenses";
 
 type IncomeWithNet = {
   id: number;
@@ -29,51 +38,125 @@ type IncomeWithNet = {
   type: IncomeType;
   amount: number;
   hoursPerWeek: number | null;
+  category?: IncomeCategory | null;
+  frequency: PaymentFrequency | null;
   netMonthly: number;
+  basis: IncomeBasis;
+  displayAmount: number;
 };
 
-const incomeLabels: Record<IncomeType, string> = {
+const basisLabels: Record<IncomeBasis, string> = {
   hourly: "Hourly (gross)",
   monthly_net: "Monthly (net)",
+  weekly_net: "Weekly (net)",
+  fortnightly_net: "Bi-weekly (net)",
+  four_weekly_net: "Four-weekly (net)",
   yearly_gross: "Yearly (gross)",
   uc: "Universal Credit (net)",
 };
+
+function basisSuffix(basis: IncomeBasis) {
+  switch (basis) {
+    case "hourly":
+      return "/hr gross";
+    case "yearly_gross":
+      return "/yr gross";
+    case "weekly_net":
+      return "/wk net";
+    case "fortnightly_net":
+      return "/2wk net";
+    case "four_weekly_net":
+      return "/4wk net";
+    case "uc":
+      return "/mo (UC award)";
+    default:
+      return "/mo net";
+  }
+}
 
 async function loadIncomeData() {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) redirect("/sign-in");
 
+  const progress = await getOnboardingProgress(session.user.id);
+  if (progress.step !== "incomes" && progress.step !== "done") {
+    redirect(progress.nextPath);
+  }
+
   const incomes = await db.query.incomeTable.findMany({
     where: eq(incomeTable.userId, session.user.id),
   });
 
-  const enriched: IncomeWithNet[] = incomes.map((income) => ({
-    ...income,
-    netMonthly: estimateNetMonthly({
-      type: income.type as IncomeType,
-      amount: income.amount,
-      hoursPerWeek: income.hoursPerWeek,
-    }),
-  }));
+  const enriched: IncomeWithNet[] = incomes.map((income) => {
+    const rawAmount = Number(income.amount);
+    const amount = Number.isFinite(rawAmount) ? rawAmount : 0;
+    const rawHours = income.hoursPerWeek === null ? null : Number(income.hoursPerWeek);
+    const hoursPerWeek = rawHours !== null && Number.isFinite(rawHours) ? rawHours : null;
+    const hoursForCalc = income.type === "hourly" ? (hoursPerWeek ?? defaultHoursGuess) : hoursPerWeek;
+    const basis = inferBasisFromIncome({ type: income.type as IncomeType, frequency: income.frequency as PaymentFrequency });
+    const displayAmount = denormalizeIncomeAmount(amount, basis);
+    const category = (income.category as IncomeCategory | null) ?? null;
+    return {
+      ...income,
+      amount,
+      hoursPerWeek: hoursPerWeek ?? (income.type === "hourly" ? defaultHoursGuess : null),
+      category,
+      basis,
+      displayAmount,
+      frequency: income.frequency as PaymentFrequency,
+      netMonthly: estimateNetMonthly({
+        type: income.type as IncomeType,
+        amount,
+        hoursPerWeek: hoursForCalc,
+      }),
+    };
+  });
 
   // Pick up UC from an entry typed as "uc" or named "universal credit" (fallback for users who picked the wrong type).
   const ucCandidate =
     enriched.find((inc) => inc.type === "uc") ||
-    enriched.find((inc) => inc.name.toLowerCase().includes("universal"));
+    enriched.find((inc) => inc.name.toLowerCase().includes("universal")) ||
+    enriched.find((inc) => inc.name.toLowerCase().includes("uc")) ||
+    enriched.find((inc) => (inc.category ?? "").toLowerCase() === "uc");
 
-  const ucBase = ucCandidate ? ucCandidate.netMonthly : Number(process.env.UC_BASE_MONTHLY ?? 0);
-  const taperIgnore = Number(process.env.UC_TAPER_DISREGARD ?? 411);
-  const taperRate = Number(process.env.UC_TAPER_RATE ?? 0.55);
+  const baseFromEnv = Number(process.env.UC_BASE_MONTHLY ?? 0);
+  const disregardFromEnv = Number(process.env.UC_TAPER_DISREGARD ?? 411);
+  const taperRateFromEnv = Number(process.env.UC_TAPER_RATE ?? 0.55);
+  const ucBaseEnv = Number.isFinite(baseFromEnv) ? baseFromEnv : 0;
+  const taperIgnore = Number.isFinite(disregardFromEnv) ? disregardFromEnv : 411;
+  const taperRate = Number.isFinite(taperRateFromEnv) ? taperRateFromEnv : 0.55;
+  const ucBase =
+    ucCandidate && Number.isFinite(ucCandidate.netMonthly) ? ucCandidate.netMonthly : ucBaseEnv;
+  // Pull UC managed payments (rent/service charge etc.) that are flagged as paid by UC so the cash payment reflects deductions.
+  const expenses = await db.query.expenseTable.findMany({
+    where: eq(expenseTable.userId, session.user.id),
+  });
+  const paidByUcMonthly = expenses
+    .filter((exp) => exp.paidByUc)
+    .reduce((sum, exp) => {
+      const { monthlyAmount } = formatExpenseAmounts({
+        amount: Number(exp.amount),
+        frequency: exp.frequency as ExpenseFrequency,
+        paidByUc: exp.paidByUc,
+      });
+      return sum + monthlyAmount;
+    }, 0);
+
   const ucPayment = calculateUcPayment({
     incomes: enriched,
     base: ucBase,
     taperIgnore,
     taperRate,
+    paidByUcMonthly,
   });
   const incomesWithoutUc = enriched.filter(
     (inc) => inc !== ucCandidate && inc.type !== "uc"
   );
-  const totalNetMonthly = incomesWithoutUc.reduce((sum, inc) => sum + inc.netMonthly, 0);
+  const totalNetMonthly = incomesWithoutUc.reduce(
+    (sum, inc) => sum + (Number.isFinite(inc.netMonthly) ? inc.netMonthly : 0),
+    0
+  );
+  const ucPaymentSafe = Number.isFinite(ucPayment) ? ucPayment : 0;
   const incomesWithAdjustedUc = [
     ...incomesWithoutUc,
     ...(ucCandidate || ucBase
@@ -82,11 +165,14 @@ async function loadIncomeData() {
             ...(ucCandidate ?? {
               id: -1,
               name: "Universal Credit",
-              type: "uc",
-              amount: ucBase,
-              hoursPerWeek: null,
-            }),
-            netMonthly: ucPayment,
+            type: "uc",
+            amount: ucBase,
+            hoursPerWeek: null,
+            frequency: "monthly" as PaymentFrequency,
+            basis: "uc" as IncomeBasis,
+            displayAmount: ucBase,
+          }),
+            netMonthly: ucPaymentSafe,
           },
         ]
       : []),
@@ -96,8 +182,8 @@ async function loadIncomeData() {
     incomes: incomesWithAdjustedUc,
     summary: {
       totalNetMonthly,
-      ucPayment,
-      householdMonthly: totalNetMonthly + ucPayment,
+      ucPayment: ucPaymentSafe,
+      householdMonthly: totalNetMonthly + ucPaymentSafe,
     },
   };
 }
@@ -187,38 +273,45 @@ export default async function IncomePage() {
                   <div className="space-y-3">
                     {data.incomes.map((income) => (
                       <Card key={income.id} className="border border-border/70 bg-card/80 shadow-sm shadow-primary/5 backdrop-blur">
-                        <CardHeader className="pb-3">
-                          <div className="flex items-start justify-between gap-3">
-                            <div>
-                              <CardTitle className="text-base font-semibold">
-                                {income.name}
-                              </CardTitle>
-                              <p className="text-sm text-muted-foreground">
-                                {incomeLabels[income.type]}
-                              </p>
-                            </div>
-                            <Badge variant="outline" className="text-xs">
-                              {formatCurrency(income.netMonthly)}/mo net
-                            </Badge>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <CardTitle className="text-base font-semibold">
+                          {income.name}
+                        </CardTitle>
+                        <p className="text-sm text-muted-foreground">
+                                {basisLabels[income.basis]}
+                        </p>
+                      </div>
+                      <Badge variant="outline" className="text-xs">
+                        {formatCurrency(income.netMonthly)}/mo net
+                      </Badge>
                           </div>
                         </CardHeader>
                         <CardContent className="grid gap-2 text-sm text-muted-foreground">
                           <div className="flex items-center justify-between">
                             <span>Recorded amount</span>
                             <span className="font-medium text-foreground">
-                              {formatCurrency(income.amount)}
-                              {income.type === "hourly"
-                                ? "/hr"
-                                : income.type === "yearly_gross"
-                                ? "/yr gross"
-                                : "/mo"}
+                              {formatCurrency(income.displayAmount)}
+                              {basisSuffix(income.basis)}
                             </span>
                           </div>
-                          {income.type === "hourly" && income.hoursPerWeek && (
+                          {income.basis === "hourly" && income.hoursPerWeek && (
                             <div className="flex items-center justify-between">
-                              <span>Hours per week</span>
+                              <span>
+                                Hours per week
+                                {income.hoursPerWeek === defaultHoursGuess ? " (estimated)" : ""}
+                              </span>
                               <span className="font-medium text-foreground">
                                 {income.hoursPerWeek}
+                              </span>
+                            </div>
+                          )}
+                          {income.frequency && (
+                            <div className="flex items-center justify-between">
+                              <span>Pay cycle</span>
+                              <span className="font-medium text-foreground">
+                                {income.frequency.replace("_", "-")}
                               </span>
                             </div>
                           )}

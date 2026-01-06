@@ -20,6 +20,7 @@ async function seed() {
       name: "Test User",
       emailVerified: true,
       notifyEmails: true,
+      onboardingStep: "done",
       image: null,
     });
 

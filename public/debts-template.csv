@@ -1,0 +1,4 @@
+name,type,balance,interestRate,minimumPayment,frequency,dueDay
+"Credit Card","credit_card",1200.50,19.99,35.00,monthly,15
+"Council Tax","council_tax",320.00,,80.00,monthly,1
+"Energy arrears","electric_arrears",450.75,,"",weekly,5

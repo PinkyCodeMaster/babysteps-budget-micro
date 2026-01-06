@@ -44,7 +44,18 @@ export function LoginForm({
             onRequest: () => setLoading(true),
             onSuccess: () => {
               setLoading(false);
-              router.push("/dashboard");
+              fetch("/api/onboarding/progress", { cache: "no-store" })
+                .then(async (res) => {
+                  if (!res.ok) {
+                    router.push("/onboarding");
+                    return;
+                  }
+                  const data = await res.json();
+                  router.push(data.nextPath || "/onboarding");
+                })
+                .catch(() => {
+                  router.push("/onboarding");
+                });
             },
             onError: (ctx) => {
               setError(ctx.error.message);
@@ -59,7 +70,7 @@ export function LoginForm({
         <div className="flex flex-col items-center gap-1 text-center">
           <h1 className="text-2xl font-bold">Login to your account</h1>
           <p className="text-muted-foreground text-sm text-balance">
-            Enter your email below to login to your account
+            Enter your email and password. If onboarding is not finished, we will guide you there first.
           </p>
         </div>
 

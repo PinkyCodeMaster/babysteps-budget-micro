@@ -18,8 +18,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "BabySteps - Budget Micro",
-  description: "A finished, portfolio-ready debt snowball tracker.",
+  title: "BabySteps | UK debt snowball",
+  description: "Manual-first debt snowball app for UK households, with guardrails for UC, essentials, and payments.",
 };
 
 export default function RootLayout({

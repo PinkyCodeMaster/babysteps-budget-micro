@@ -6,14 +6,20 @@ export function Footer() {
       <div className="container mx-auto flex flex-col gap-4 px-6 py-8 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1">
           <p className="text-foreground font-semibold">BabySteps</p>
-          <p>Debt payoff, income, and expenses in one calm dashboard.</p>
+          <p>UK debt snowball with guardrails for essentials, UC, and payments.</p>
         </div>
         <div className="flex flex-wrap items-center gap-4">
+          <Link href="/about" className="rounded px-2 py-1 hover:bg-primary/10 hover:text-foreground">
+            About
+          </Link>
           <Link href="/contact" className="rounded px-2 py-1 hover:bg-primary/10 hover:text-foreground">
             Contact
           </Link>
           <Link href="/privacy" className="rounded px-2 py-1 hover:bg-primary/10 hover:text-foreground">
             Privacy
+          </Link>
+          <Link href="/cookies" className="rounded px-2 py-1 hover:bg-primary/10 hover:text-foreground">
+            Cookies
           </Link>
           <Link href="/terms" className="rounded px-2 py-1 hover:bg-primary/10 hover:text-foreground">
             Terms

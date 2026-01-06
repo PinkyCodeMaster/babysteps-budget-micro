@@ -94,12 +94,17 @@ export async function POST(request: Request) {
       return Response.json({ error: "Please provide a valid name and type." }, { status: 400 });
     }
 
-    if (!Number.isFinite(Number(balance)) || Number(balance) <= 0) {
+    const safeBalance = Math.round(Number(balance) * 100) / 100;
+    if (!Number.isFinite(safeBalance) || safeBalance <= 0) {
       return Response.json({ error: "Please provide a valid balance." }, { status: 400 });
     }
 
-    if (!Number.isFinite(Number(minimumPayment)) || Number(minimumPayment) <= 0) {
-      return Response.json({ error: "Minimum payment must be greater than zero." }, { status: 400 });
+    const safeMinimum =
+      minimumPayment === undefined || minimumPayment === null
+        ? null
+        : Math.round(Number(minimumPayment) * 100) / 100;
+    if (safeMinimum !== null && (!Number.isFinite(safeMinimum) || safeMinimum <= 0)) {
+      return Response.json({ error: "Minimum payment must be greater than zero if provided." }, { status: 400 });
     }
 
     const safeFrequency = allowedFrequencies.includes(frequency as DebtFrequency) ? (frequency as DebtFrequency) : "monthly";
@@ -108,9 +113,9 @@ export async function POST(request: Request) {
     const sanitized: typeof debtTable.$inferInsert = {
       name,
       type,
-      balance: Number(balance),
-      interestRate: interestRate === undefined || interestRate === null ? null : Number(interestRate),
-      minimumPayment: Number(minimumPayment),
+      balance: safeBalance,
+      interestRate: interestRate === undefined || interestRate === null ? null : Math.round(Number(interestRate) * 100) / 100,
+      minimumPayment: safeMinimum,
       frequency: safeFrequency,
       dueDay: safeDueDay,
       userId: session.user.id,

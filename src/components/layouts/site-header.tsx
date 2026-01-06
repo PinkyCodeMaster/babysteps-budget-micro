@@ -15,16 +15,20 @@ export function SiteHeader() {
   const session = authClient.useSession();
 
   const links = [
-    { href: "/", label: "Home" },
-    { href: "/techstack", label: "Tech stack" },
-    { href: "/contact", label: "Contact" },
+    { href: "/", label: "Overview" },
+    { href: "/#how-it-works", label: "How it works" },
+    { href: "/about", label: "About" },
+    { href: "/contact", label: "Support" },
   ];
 
   return (
-    <header className="sticky top-0 z-30 border-b border-border/70 bg-background/80 backdrop-blur">
+    <header className="sticky top-0 z-30 border-b border-border/60 bg-background/80 backdrop-blur">
       <div className="container mx-auto flex items-center justify-between px-6 py-4">
-        <Link href="/" className="text-lg font-semibold tracking-tight">
-          BabySteps
+        <Link href="/" className="group flex items-center gap-2 text-lg font-semibold tracking-tight">
+          <span>BabySteps</span>
+          <span className="rounded-full border border-primary/40 bg-primary/10 px-2 py-0.5 text-[11px] font-semibold uppercase leading-none text-primary">
+            Debt snowball UK
+          </span>
         </Link>
         <div className="flex items-center gap-3 sm:hidden">
           <ModeToggle />
@@ -85,13 +89,20 @@ export function SiteHeader() {
                 </Button>
               </>
             ) : (
-              <Link
-                href="/sign-in"
-                className="rounded px-3 py-2 text-foreground/80 transition-colors hover:bg-primary/10 hover:text-foreground"
-                onClick={() => setOpen(false)}
-              >
-                Sign in
-              </Link>
+              <>
+                <Link
+                  href="/sign-in"
+                  className="rounded px-3 py-2 text-foreground/80 transition-colors hover:bg-primary/10 hover:text-foreground"
+                  onClick={() => setOpen(false)}
+                >
+                  Sign in
+                </Link>
+                <Link href="/sign-up" onClick={() => setOpen(false)}>
+                  <Button size="sm" className="ml-1">
+                    Get started
+                  </Button>
+                </Link>
+              </>
             )}
             <ModeToggle />
           </div>
@@ -112,13 +123,20 @@ export function SiteHeader() {
                 </Button>
               </>
             ) : (
-              <Link
-                href="/sign-in"
-                className="rounded px-3 py-2 text-foreground/80 transition-colors hover:bg-primary/10 hover:text-foreground"
-                onClick={() => setOpen(false)}
-              >
-                Sign in
-              </Link>
+              <>
+                <Link
+                  href="/sign-in"
+                  className="rounded px-3 py-2 text-foreground/80 transition-colors hover:bg-primary/10 hover:text-foreground"
+                  onClick={() => setOpen(false)}
+                >
+                  Sign in
+                </Link>
+                <Link href="/sign-up" onClick={() => setOpen(false)}>
+                  <Button className="w-full" size="sm">
+                    Start free
+                  </Button>
+                </Link>
+              </>
             )}
           </div>
         </nav>

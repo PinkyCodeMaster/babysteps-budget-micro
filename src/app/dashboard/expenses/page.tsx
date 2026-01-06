@@ -10,10 +10,12 @@ import { db } from "@/db";
 import { expenseTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { formatCurrency } from "@/lib/format";
-import { desc, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { getOnboardingProgress } from "@/lib/onboarding";
 import type React from "react";
+import { formatExpenseAmounts, type ExpenseFrequency } from "@/lib/expenses";
 
 type ExpenseType =
   | "housing"
@@ -68,12 +70,35 @@ async function loadExpenses() {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) redirect("/sign-in");
 
-  const expenses = await db.query.expenseTable.findMany({
-    where: eq(expenseTable.userId, session.user.id),
-    orderBy: desc(expenseTable.amount),
-  });
+  const progress = await getOnboardingProgress(session.user.id);
+  if (progress.step === "incomes") {
+    redirect("/onboarding/incomes");
+  }
+  if (progress.step === "debts") {
+    redirect("/onboarding/debts");
+  }
 
-  const totalMonthly = expenses.reduce((sum, exp) => sum + exp.amount, 0);
+  const expenses = (
+    await db.query.expenseTable.findMany({
+      where: eq(expenseTable.userId, session.user.id),
+    })
+  )
+    .map((exp) => {
+      const amount = Number(exp.amount);
+      const frequency = exp.frequency as ExpenseFrequency;
+      const { monthlyAmount, monthlyOutOfPocket } = formatExpenseAmounts({
+        amount,
+        frequency,
+        paidByUc: exp.paidByUc,
+      });
+      return { ...exp, amount, frequency, monthlyAmount, monthlyOutOfPocket };
+    })
+    .sort((a, b) => b.monthlyAmount - a.monthlyAmount);
+
+  const totalMonthly = expenses.reduce(
+    (sum, exp) => sum + (Number.isFinite(exp.monthlyOutOfPocket) ? exp.monthlyOutOfPocket : 0),
+    0
+  );
 
   return { expenses, totalMonthly };
 }
@@ -106,7 +131,7 @@ export default async function ExpensesPage() {
                 <Card className="border border-border/70 bg-card/80 shadow-sm shadow-primary/5 backdrop-blur">
                   <CardHeader>
                     <CardTitle className="text-sm font-medium text-muted-foreground">
-                      Monthly expenses
+                      Monthly expenses (out of pocket)
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
@@ -114,7 +139,7 @@ export default async function ExpensesPage() {
                       {formatCurrency(data.totalMonthly)}
                     </p>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      Sum of everything you have logged.
+                      UC-managed bills are excluded here so totals only reflect what leaves your account.
                     </p>
                   </CardContent>
                 </Card>
@@ -131,8 +156,8 @@ export default async function ExpensesPage() {
                     <p className="mt-1 text-xs text-muted-foreground">
                       {data.expenses[0]
                         ? `${labels[data.expenses[0].type as ExpenseType]} - ${formatCurrency(
-                            data.expenses[0].amount
-                          )}/mo`
+                            data.expenses[0].monthlyAmount
+                          )}/mo${data.expenses[0].paidByUc ? " (covered by UC)" : ""}`
                         : "Add an expense to see the breakdown."}
                     </p>
                   </CardContent>
@@ -177,15 +202,28 @@ export default async function ExpensesPage() {
                                 {expense.name}
                               </CardTitle>
                               <p className="text-sm text-muted-foreground">
-                                {labels[expense.type as ExpenseType]}
+                                {labels[expense.type as ExpenseType]} - {formatCurrency(expense.amount)} per {expense.frequency?.replace(/_/g, " ")}
                               </p>
                             </div>
-                            <Badge variant="outline" className="text-xs">
-                              {formatCurrency(expense.amount)}/mo
-                            </Badge>
+                            <div className="flex flex-wrap justify-end gap-2">
+                              <Badge variant="outline" className="text-xs">
+                                {formatCurrency(expense.monthlyAmount)}/mo
+                              </Badge>
+                              {expense.paidByUc && (
+                                <Badge variant="secondary" className="text-xs">
+                                  Covered by UC
+                                </Badge>
+                              )}
+                            </div>
                           </div>
                         </CardHeader>
                         <CardContent className="grid gap-2 text-sm text-muted-foreground">
+                          <div className="flex items-center justify-between">
+                            <span>Out of pocket</span>
+                            <span className="font-medium text-foreground">
+                              {formatCurrency(expense.monthlyOutOfPocket)}/mo
+                            </span>
+                          </div>
                           <EditExpenseForm expense={expense} />
                         </CardContent>
                       </Card>
@@ -200,3 +238,4 @@ export default async function ExpensesPage() {
     </SidebarProvider>
   );
 }
+

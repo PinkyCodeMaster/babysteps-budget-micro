@@ -1,4 +1,4 @@
-import { integer, pgEnum, pgTable, timestamp, varchar } from "drizzle-orm/pg-core";
+import { integer, numeric, pgEnum, pgTable, timestamp, varchar } from "drizzle-orm/pg-core";
 import { user } from "./auth";
 
 export const incomeTypeEnum = pgEnum("income_type", [
@@ -27,6 +27,13 @@ export const paymentFrequencyEnum = pgEnum("payment_frequency", [
   "yearly",
 ]);
 
+export const paymentDayRuleEnum = pgEnum("payment_day_rule", [
+  "specific_day",
+  "last_working_day",
+  "last_friday",
+  "last_thursday",
+]);
+
 export const incomeTable = pgTable("incomes", {
   id: integer().primaryKey().generatedAlwaysAsIdentity(),
 
@@ -38,13 +45,15 @@ export const incomeTable = pgTable("incomes", {
 
   type: incomeTypeEnum().notNull(),
 
-  amount: integer().notNull(),
+  amount: numeric({ precision: 14, scale: 2 }).notNull().$type<number>(),
 
-  hoursPerWeek: integer(),
+  hoursPerWeek: numeric({ precision: 8, scale: 2 }).$type<number | null>(),
 
   category: incomeCategoryEnum().default("wage").notNull(),
 
   frequency: paymentFrequencyEnum().default("monthly").notNull(),
+
+  paymentDayRule: paymentDayRuleEnum().default("specific_day").notNull(),
 
   paymentDay: integer(),
 

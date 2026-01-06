@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ShieldCheck, Lock, Shield, Cookie, Clock3 } from "lucide-react";
+import { ShieldCheck, Lock, Shield, Cookie, Clock3, Server } from "lucide-react";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -11,27 +11,32 @@ const sections = [
   {
     title: "What we collect",
     icon: ShieldCheck,
-    body: "Account details (email, name) and the financial data you enter (debts, payments, income, expenses). We also store authentication and session cookies.",
+    body: "Account details (email and name) plus the numbers you enter (debts, payments, income, expenses). Support emails you send us are kept so we can respond.",
   },
   {
     title: "How we use it",
     icon: Lock,
-    body: "To run the app, keep you signed in, and show accurate totals. We do not sell or share your data with advertisers.",
+    body: "To run the app, keep you signed in, send account or support emails, and calculate your snowball totals. We do not sell your data or share it with advertisers.",
   },
   {
-    title: "Cookies",
+    title: "Cookies and storage",
     icon: Cookie,
-    body: "We use essential cookies for sessions only. No tracking pixels or ad cookies.",
+    body: "We use essential cookies for sessions and local storage for theme and cookie consent. No marketing pixels. Data lives in Neon Postgres with optional S3-compatible backups.",
   },
   {
-    title: "Data retention",
+    title: "Third parties",
+    icon: Server,
+    body: "Email is delivered via Resend in production and Mailpit in development. Errors are monitored with Sentry. Files use S3-compatible storage such as MinIO.",
+  },
+  {
+    title: "Data retention and deletion",
     icon: Clock3,
-    body: "Your data stays until you remove it. Contact us if you need your account deleted.",
+    body: "Your data stays until you remove it. Ask us for an export or deletion at any time and we will confirm via your account email.",
   },
   {
     title: "Security",
     icon: Shield,
-    body: "We validate on the server and use industry-standard storage, but no system is 100% secure, so please use strong passwords.",
+    body: "Server-side validation protects against overpayments and bad data. No bank connections are used. Use strong passwords and keep your device secure.",
   },
 ];
 
@@ -45,7 +50,7 @@ export default function PrivacyPage() {
           </Badge>
           <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Privacy Policy</h1>
           <p className="max-w-2xl text-muted-foreground">
-            We respect your privacy. This policy explains what we collect and how we use it.
+            We keep your data simple and private. This policy explains what we collect and how we use it.
           </p>
         </header>
 
@@ -71,10 +76,9 @@ export default function PrivacyPage() {
 
         <Card className="border border-border/60 bg-card/80 shadow-sm shadow-primary/10 backdrop-blur">
           <CardContent className="space-y-3 p-6 text-sm leading-relaxed text-muted-foreground">
-            <p>Questions? Email us at privacy@babysteps.test.</p>
+            <p>Questions or data requests? Email us at privacy@babysteps.app.</p>
             <p className="text-foreground">
-              We keep this policy simple on purpose. If we change how we use your data, we will update this page and let you
-              know.
+              If we change how we use your data, we will update this page and the effective date.
             </p>
           </CardContent>
         </Card>

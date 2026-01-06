@@ -168,21 +168,26 @@ export async function PATCH(request: NextRequest, { params }: DebtParams) {
     }
 
     if (balance !== undefined) {
-      if (!Number.isFinite(Number(balance)) || Number(balance) <= 0) {
+      const safeBalance = Math.round(Number(balance) * 100) / 100;
+      if (!Number.isFinite(safeBalance) || safeBalance <= 0) {
         return Response.json({ error: "Balance must be greater than zero" }, { status: 400 });
       }
-      updates.balance = Number(balance);
+      updates.balance = safeBalance;
     }
 
     if (interestRate !== undefined) {
-      updates.interestRate = interestRate === null ? null : Number(interestRate);
+      updates.interestRate = interestRate === null ? null : Math.round(Number(interestRate) * 100) / 100;
     }
 
     if (minimumPayment !== undefined) {
-      if (!Number.isFinite(Number(minimumPayment)) || Number(minimumPayment) <= 0) {
-        return Response.json({ error: "Minimum payment must be greater than zero" }, { status: 400 });
+      const safeMinimum =
+        minimumPayment === null || minimumPayment === undefined
+          ? null
+          : Math.round(Number(minimumPayment) * 100) / 100;
+      if (safeMinimum !== null && (!Number.isFinite(safeMinimum) || safeMinimum <= 0)) {
+        return Response.json({ error: "Minimum payment must be greater than zero if provided" }, { status: 400 });
       }
-      updates.minimumPayment = Number(minimumPayment);
+      updates.minimumPayment = safeMinimum;
     }
 
     if (frequency !== undefined) {

@@ -1,64 +1,22 @@
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
-import { expenseTable } from "@/db/schema";
+import { expenseTable, expenseFrequencyEnum } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { logError } from "@/lib/logger";
+import {
+  deriveCategory,
+  formatExpenseAmounts,
+  isExpenseCategory,
+  isExpenseType,
+  normalizeCurrency,
+  ucEligibleSubcategories,
+  type ExpenseFrequency,
+  type ExpenseType,
+  type ExpenseCategory,
+} from "@/lib/expenses";
 
-type ExpenseType =
-  | "housing"
-  | "utilities"
-  | "transport"
-  | "food"
-  | "childcare"
-  | "insurance"
-  | "subscriptions"
-  | "medical"
-  | "education"
-  | "entertainment"
-  | "savings"
-  | "other"
-  | "rent"
-  | "service_charge"
-  | "council_tax"
-  | "gas"
-  | "electric"
-  | "water"
-  | "car_fuel"
-  | "groceries"
-  | "phone"
-  | "internet";
-
-type ExpenseCategory = ExpenseType | "rent" | "service_charge" | "council_tax" | "gas" | "electric" | "water" | "car_fuel" | "groceries" | "phone" | "internet";
-type ExpenseFrequency = "weekly" | "fortnightly" | "four_weekly" | "monthly" | "quarterly" | "yearly";
-
-const allowedTypes: ExpenseType[] = [
-  "housing",
-  "utilities",
-  "transport",
-  "food",
-  "childcare",
-  "insurance",
-  "subscriptions",
-  "medical",
-  "education",
-  "entertainment",
-  "savings",
-  "other",
-  "rent",
-  "service_charge",
-  "council_tax",
-  "gas",
-  "electric",
-  "water",
-  "car_fuel",
-  "groceries",
-  "phone",
-  "internet",
-];
-
-const allowedCategories: ExpenseCategory[] = allowedTypes;
-const allowedFrequencies: ExpenseFrequency[] = ["weekly", "fortnightly", "four_weekly", "monthly", "quarterly", "yearly"];
+const allowedFrequencies: ExpenseFrequency[] = expenseFrequencyEnum.enumValues;
 
 function safeDay(value?: number | null) {
   if (Number.isInteger(Number(value)) && Number(value) >= 1 && Number(value) <= 31) {
@@ -74,14 +32,34 @@ export async function GET() {
     if (!session) return Response.json({ error: "Unauthorized" }, { status: 401 });
     userId = session.user.id;
 
-    const expenses = await db.query.expenseTable.findMany({
+    const expensesRaw = await db.query.expenseTable.findMany({
       where: eq(expenseTable.userId, session.user.id),
     });
 
-    const totalMonthly = expenses.reduce((sum, exp) => sum + exp.amount, 0);
+    const expenses = expensesRaw.map((exp) => {
+      const amount = Number(exp.amount);
+      const frequency = exp.frequency as ExpenseFrequency;
+      const category = exp.category as ExpenseCategory;
+      const { monthlyAmount, monthlyOutOfPocket } = formatExpenseAmounts({
+        amount,
+        frequency,
+        paidByUc: exp.paidByUc,
+      });
+      return {
+        ...exp,
+        amount,
+        category,
+        frequency,
+        monthlyAmount,
+        monthlyOutOfPocket,
+      };
+    });
+
+    const totalMonthly = expenses.reduce((sum, exp) => sum + exp.monthlyOutOfPocket, 0);
+    const ucCovered = expenses.reduce((sum, exp) => sum + (exp.paidByUc ? exp.monthlyAmount : 0), 0);
 
     return Response.json({
-      summary: { totalMonthly },
+      summary: { totalMonthly, ucCoveredMonthly: ucCovered },
       expenses,
     });
   } catch (error) {
@@ -108,25 +86,30 @@ export async function POST(request: Request) {
       paidByUc: boolean;
     }>;
 
-    if (!name || name.length > 255 || !type || !allowedTypes.includes(type)) {
+    if (!name || name.length > 255 || !type || !isExpenseType(type)) {
       return Response.json({ error: "Please provide a valid name and type." }, { status: 400 });
     }
 
-    if (!Number.isFinite(Number(amount)) || Number(amount) <= 0) {
+    const safeAmount = normalizeCurrency(amount);
+    if (!Number.isFinite(safeAmount) || safeAmount <= 0) {
       return Response.json({ error: "Amount must be greater than zero." }, { status: 400 });
     }
 
-    const safeCategory = allowedCategories.includes(category as ExpenseCategory) ? (category as ExpenseCategory) : "other";
     const safeFrequency = allowedFrequencies.includes(frequency as ExpenseFrequency)
       ? (frequency as ExpenseFrequency)
       : "monthly";
+    const safeCategory = deriveCategory(
+      isExpenseCategory(category) ? category : null,
+      type
+    );
+
     const safePaymentDay = safeDay(paymentDay);
-    const paidByUcValue = Boolean(paidByUc);
+    const paidByUcValue = ucEligibleSubcategories.includes(type) && Boolean(paidByUc);
 
     await db.insert(expenseTable).values({
       name,
       type,
-      amount: Number(amount),
+      amount: safeAmount,
       category: safeCategory,
       frequency: safeFrequency,
       paymentDay: safePaymentDay,

@@ -24,7 +24,7 @@ export function VerifyEmailForm({ initialEmail }: Props) {
     setAutoTriggered(true);
 
     authClient.sendVerificationEmail(
-      { email: initialEmail, callbackURL: "/dashboard" },
+      { email: initialEmail, callbackURL: "/onboarding" },
       {
         onRequest: () => setLoading(true),
         onSuccess: () => {
@@ -51,7 +51,7 @@ export function VerifyEmailForm({ initialEmail }: Props) {
         setMessage(null);
 
         authClient.sendVerificationEmail(
-          { email, callbackURL: "/dashboard" },
+          { email, callbackURL: "/onboarding" },
           {
             onRequest: () => setLoading(true),
             onSuccess: () => {
@@ -69,7 +69,7 @@ export function VerifyEmailForm({ initialEmail }: Props) {
       <FieldGroup>
         <div className="space-y-1">
           <h1 className="text-xl font-semibold">Verify your email</h1>
-          <FieldDescription>We&apos;ll send you a fresh link to confirm your address.</FieldDescription>
+          <FieldDescription>We will send a fresh link. After you click it, we will take you straight to onboarding.</FieldDescription>
         </div>
 
         <Field>

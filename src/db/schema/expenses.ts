@@ -1,4 +1,4 @@
-import { boolean, integer, pgEnum, pgTable, timestamp, varchar } from "drizzle-orm/pg-core";
+import { boolean, integer, numeric, pgEnum, pgTable, timestamp, varchar } from "drizzle-orm/pg-core";
 import { user } from "./auth";
 
 export const expenseTypeEnum = pgEnum("expense_type", [
@@ -71,8 +71,8 @@ export const expenseTable = pgTable("expenses", {
 
   type: expenseTypeEnum().notNull(),
 
-  // Stored as monthly net cost
-  amount: integer().notNull(),
+  // Stored as the amount paid each period; normalized monthly amounts are derived in code.
+  amount: numeric({ precision: 14, scale: 2 }).notNull().$type<number>(),
 
   category: expenseCategoryEnum().default("other").notNull(),
 

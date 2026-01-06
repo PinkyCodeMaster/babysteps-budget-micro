@@ -4,11 +4,11 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Mail, MessageSquare, ShieldCheck } from "lucide-react";
+import { Clock3, Mail, MessageSquare, ShieldCheck } from "lucide-react";
 import { revalidatePath } from "next/cache";
 
 export const metadata = {
-  title: "Contact Us | BabySteps",
+  title: "Support | BabySteps",
 };
 
 async function submitContact(formData: FormData) {
@@ -25,7 +25,7 @@ async function submitContact(formData: FormData) {
   const body = `From: ${name} <${email}>\n\n${message}`;
 
   await sendMail({
-    to: process.env.CONTACT_TO || "support@babysteps.test",
+    to: process.env.CONTACT_TO || "support@babysteps.app",
     subject: "New BabySteps contact form message",
     text: body,
     html: `<p><strong>From:</strong> ${name} (${email})</p><p>${message}</p>`,
@@ -40,11 +40,11 @@ export default function ContactPage() {
       <div className="container mx-auto max-w-5xl px-6 py-12">
         <div className="mb-8 space-y-3">
           <Badge variant="outline" className="border-primary/30 bg-primary/10 text-primary">
-            Support that replies
+            Production support, not just a contact form
           </Badge>
-          <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Tell us what you need</h1>
+          <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Talk to a person who can help</h1>
           <p className="text-muted-foreground">
-            Questions, feedback, or ideas? Send us a note and we will reply soon.
+            Ask about the product, billing, or data requests. We reply quickly and never ask for bank logins.
           </p>
         </div>
 
@@ -53,25 +53,35 @@ export default function ContactPage() {
             <CardHeader className="pb-2">
               <CardTitle className="text-lg font-semibold">Prefer a quick note?</CardTitle>
               <p className="text-sm text-muted-foreground">
-                Email us anytime at <span className="font-medium text-foreground">support@babysteps.test</span>.
+                Email us anytime at <span className="font-medium text-foreground">support@babysteps.app</span>. We use
+                Mailpit in development and Resend in production so messages land.
               </p>
             </CardHeader>
             <CardContent className="space-y-3 text-sm leading-relaxed text-muted-foreground">
               <div className="flex items-center gap-2 text-foreground">
-                <ShieldCheck className="h-4 w-4 text-primary" />
-                <span className="font-medium">We read every message</span>
+                <Clock3 className="h-4 w-4 text-primary" />
+                <span className="font-medium">Response time</span>
               </div>
-              <p className="pl-6">Product, billing, or accessibility questions all go to the same inbox.</p>
+              <p className="pl-6">We aim to reply within one business day, sooner if something is blocking you.</p>
+              <div className="flex items-center gap-2 text-foreground">
+                <ShieldCheck className="h-4 w-4 text-primary" />
+                <span className="font-medium">Security first</span>
+              </div>
+              <p className="pl-6">
+                Never send bank logins or card details. We handle data changes and deletions via your account email.
+              </p>
               <div className="flex items-center gap-2 text-foreground">
                 <MessageSquare className="h-4 w-4 text-primary" />
-                <span className="font-medium">Human replies</span>
+                <span className="font-medium">Useful context</span>
               </div>
-              <p className="pl-6">You will hear from us within one business day.</p>
+              <p className="pl-6">
+                Tell us what you are trying to do, where you are stuck, and any error text. Screenshots are welcome.
+              </p>
               <div className="flex items-center gap-2 text-foreground">
                 <Mail className="h-4 w-4 text-primary" />
-                <span className="font-medium">Keep it simple</span>
+                <span className="font-medium">Data rights</span>
               </div>
-              <p className="pl-6">Share your context and what you are trying to accomplish. We will take it from there.</p>
+              <p className="pl-6">Request exports or deletion of your account and we will confirm by email.</p>
             </CardContent>
           </Card>
 

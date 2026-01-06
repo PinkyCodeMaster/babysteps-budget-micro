@@ -32,6 +32,10 @@ export function CookieBanner() {
             and{" "}
             <Link href="/privacy" className="text-primary underline">
               privacy policy
+            </Link>{" "}
+            plus our{" "}
+            <Link href="/cookies" className="text-primary underline">
+              cookies notice
             </Link>
             .
           </p>

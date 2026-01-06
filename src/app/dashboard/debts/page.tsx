@@ -9,6 +9,7 @@ import { AddDebtPanel } from "@/components/dashboard/add-debt-panel";
 import { AddPaymentForm } from "@/components/dashboard/add-payment-form";
 import { DeleteDebtButton } from "@/components/dashboard/delete-debt-button";
 import { EditDebtForm } from "@/components/dashboard/edit-debt-form";
+import { DebtCsvImport } from "@/components/dashboard/debt-csv-import";
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
 import { debtTable } from "@/db/schema";
@@ -18,6 +19,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import type React from "react";
+import { getOnboardingProgress } from "@/lib/onboarding";
 
 type Debt = {
   id: number;
@@ -25,8 +27,9 @@ type Debt = {
   type: string;
   balance: number;
   interestRate: number | null;
-  minimumPayment: number;
+  minimumPayment: number | null;
   remainingBalance: number;
+  dueDay: number | null;
   payments: { amount: number; paymentDate: string }[];
 };
 
@@ -46,29 +49,43 @@ async function loadDebtData(sort: SortKey): Promise<DashboardData> {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) redirect("/sign-in");
 
+  const progress = await getOnboardingProgress(session.user.id);
+  if (progress.step === "incomes" || progress.step === "expenses") {
+    redirect(progress.nextPath);
+  }
+
   const debts = await db.query.debtTable.findMany({
     with: { payments: true },
     where: eq(debtTable.userId, session.user.id),
   });
 
   const enriched: DebtWithTotals[] = debts.map((debt) => {
-    const totalPaid = debt.payments.reduce((sum, p) => sum + p.amount, 0);
-    const remainingBalance = debt.balance - totalPaid;
-    return { ...debt, totalPaid, remainingBalance };
+    const payments = debt.payments.map((p) => {
+      const amount = Number.isFinite(Number(p.amount)) ? Number(p.amount) : 0;
+      return { ...p, amount };
+    });
+    const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
+    const balance = Number.isFinite(Number(debt.balance)) ? Number(debt.balance) : 0;
+    const minimumPayment =
+      debt.minimumPayment === null || debt.minimumPayment === undefined
+        ? null
+        : Number.isFinite(Number(debt.minimumPayment))
+          ? Number(debt.minimumPayment)
+          : null;
+    const dueDay = Number.isInteger(debt.dueDay) ? Number(debt.dueDay) : null;
+    const remainingBalance = balance - totalPaid;
+    return { ...debt, balance, minimumPayment, totalPaid, remainingBalance, payments, dueDay };
   });
 
   const sortedDebts = sortDebts(enriched, sort);
 
-  const totalDebt = debts.reduce((sum, d) => sum + d.balance, 0);
-  const totalPaid = debts.reduce(
-    (sum, d) => sum + d.payments.reduce((pSum, p) => pSum + p.amount, 0),
-    0
-  );
+  const totalDebt = enriched.reduce((sum, d) => sum + d.balance, 0);
+  const totalPaid = enriched.reduce((sum, d) => sum + d.totalPaid, 0);
 
   const now = new Date();
   const currentMonth = now.getMonth();
   const currentYear = now.getFullYear();
-  const paidThisMonth = debts.reduce((sum, d) => {
+  const paidThisMonth = enriched.reduce((sum, d) => {
     return (
       sum +
       d.payments.reduce((pSum, p) => {
@@ -124,6 +141,25 @@ export default async function DebtsPage({
               />
               <div className="px-4 lg:px-6 space-y-4">
                 <AddDebtPanel />
+                <div className="rounded-md border bg-card/50 p-4 text-sm">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="space-y-1">
+                      <p className="font-semibold text-foreground">Import / export debts</p>
+                      <p className="text-xs text-muted-foreground">
+                        Download the template, upload to add debts in bulk, or export what you have.
+                      </p>
+                    </div>
+                    <a
+                      className="text-xs font-semibold text-primary underline underline-offset-4"
+                      href="/api/debts/export"
+                    >
+                      Export CSV
+                    </a>
+                  </div>
+                  <div className="pt-3">
+                    <DebtCsvImport />
+                  </div>
+                </div>
                 {data.debts.length === 0 && (
                   <p className="text-sm text-muted-foreground">No debts yet. Add one to get started.</p>
                 )}

@@ -6,9 +6,9 @@ import { redirect } from "next/navigation";
 export default async function VerifyEmailPage({
   searchParams,
 }: {
-  searchParams: Promise<{ email?: string }>;
+  searchParams: { email?: string };
 }) {
-  const { email } = await searchParams;
+  const { email } = searchParams;
   const session = await auth.api.getSession({
     headers: await headers()
   })

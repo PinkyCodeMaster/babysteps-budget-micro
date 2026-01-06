@@ -21,3 +21,23 @@ test("rolls to next month when due day already passed", () => {
   const result = getNextPaymentDate({ dueDay: 10, frequency: "monthly", from });
   assert.strictEqual(result.base, "2025-03-10");
 });
+
+test("income last working day moves backward when month end is weekend/holiday", () => {
+  // August 31 2025 is a Sunday -> should pay on Friday Aug 29
+  const from = new Date("2025-08-10T00:00:00Z");
+  const result = getNextPaymentDate({
+    dueDay: 31,
+    frequency: "monthly",
+    from,
+    useLastWorkingDay: true,
+    mode: "backward",
+  });
+  assert.strictEqual(result.adjusted, "2025-08-29");
+});
+
+test("expenses/debts move forward when on weekend", () => {
+  // June 1 2025 is Sunday -> move to Monday
+  const from = new Date("2025-05-30T00:00:00Z");
+  const result = getNextPaymentDate({ dueDay: 1, frequency: "monthly", from, mode: "forward" });
+  assert.strictEqual(result.adjusted, "2025-06-02");
+});

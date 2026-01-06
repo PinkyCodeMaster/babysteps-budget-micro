@@ -1,4 +1,4 @@
-import { integer, pgEnum, pgTable, timestamp, varchar } from "drizzle-orm/pg-core";
+import { integer, numeric, pgEnum, pgTable, timestamp, varchar } from "drizzle-orm/pg-core";
 import { user } from "../schema/auth";
 
 export const debtTypeEnum = pgEnum("debt_type", [
@@ -45,11 +45,11 @@ export const debtTable = pgTable("debts", {
 
   type: debtTypeEnum().notNull(),
 
-  balance: integer().notNull(),
+  balance: numeric({ precision: 14, scale: 2 }).notNull().$type<number>(),
 
-  interestRate: integer(),
+  interestRate: numeric({ precision: 8, scale: 2 }).$type<number | null>(),
 
-  minimumPayment: integer().notNull(),
+  minimumPayment: numeric({ precision: 14, scale: 2 }).$type<number | null>(),
 
   frequency: debtFrequencyEnum().default("monthly").notNull(),
 

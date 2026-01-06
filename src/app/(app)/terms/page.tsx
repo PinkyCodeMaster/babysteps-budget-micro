@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BookText, ShieldCheck, Gavel, RefreshCw, Globe } from "lucide-react";
+import { BookCheck, Globe, Gavel, LockKeyhole, RefreshCw, ShieldCheck } from "lucide-react";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -9,29 +9,34 @@ export const metadata: Metadata = {
 
 const terms = [
   {
-    title: "Usage",
-    icon: BookText,
-    body: "BabySteps is provided as-is to help you track debts, payments, income, and expenses. Do not use it for unlawful purposes.",
+    title: "Accounts and eligibility",
+    icon: BookCheck,
+    body: "Use BabySteps for personal or household budgeting if you are able to enter your own data. You are responsible for keeping your login safe and for the accuracy of the numbers you add.",
   },
   {
-    title: "Data",
+    title: "Fair use",
     icon: ShieldCheck,
-    body: "You are responsible for the accuracy of the numbers you enter. We store data securely and do not sell it.",
+    body: "Do not use the service for unlawful purposes, spam, or automated scraping. The app is manual by design and should not be used to store payment card numbers or bank credentials.",
+  },
+  {
+    title: "Data and privacy",
+    icon: LockKeyhole,
+    body: "We store the data you enter (debts, payments, income, expenses) along with account details and session cookies. We do not sell your data. See the privacy policy for full details.",
   },
   {
     title: "Availability",
     icon: Globe,
-    body: "We aim for high uptime but do not guarantee uninterrupted access. Back up any critical data you need.",
+    body: "We aim for high uptime but do not promise uninterrupted access. Keep your own copies of critical information and request exports if you need them.",
   },
   {
-    title: "Liability",
+    title: "Advice and liability",
     icon: Gavel,
-    body: "BabySteps does not provide financial advice. You remain responsible for your financial decisions.",
+    body: "BabySteps is a tracking tool, not financial advice. You make your own financial decisions and accept that we are not liable for losses arising from use of the service.",
   },
   {
     title: "Changes",
     icon: RefreshCw,
-    body: "We may update these terms; continued use means you accept the latest version.",
+    body: "We may update these terms as the product evolves. Continued use of the app means you accept the latest version.",
   },
 ];
 
@@ -45,7 +50,7 @@ export default function TermsPage() {
           </Badge>
           <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Terms of Service</h1>
           <p className="max-w-2xl text-muted-foreground">
-            Welcome to BabySteps. By using this app you agree to these terms. We keep them simple.
+            Welcome to BabySteps. By using this app you agree to these terms so we can serve you responsibly.
           </p>
         </header>
 
@@ -71,8 +76,10 @@ export default function TermsPage() {
 
         <Card className="border border-border/60 bg-card/80 shadow-sm shadow-primary/10 backdrop-blur">
           <CardContent className="space-y-2 p-6 text-sm leading-relaxed text-muted-foreground">
-            <p>Questions? Email us at support@babysteps.test.</p>
-            <p className="text-foreground">If anything changes, we will note it here and keep the language clear.</p>
+            <p>Questions about these terms? Email us at support@babysteps.app.</p>
+            <p className="text-foreground">
+              We will note any material changes here and update the effective date when this page is revised.
+            </p>
           </CardContent>
         </Card>
       </div>

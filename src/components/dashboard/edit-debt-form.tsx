@@ -19,7 +19,7 @@ type Props = {
     type: string;
     balance: number;
     interestRate: number | null;
-    minimumPayment: number;
+    minimumPayment: number | null;
     frequency?: string;
     dueDay?: number | null;
   };
@@ -39,9 +39,13 @@ export function EditDebtForm({ debt }: Props) {
     const payload = {
       name: formData.get("name"),
       type: formData.get("type"),
-      balance: Number(formData.get("balance")),
-      interestRate: Number(formData.get("interestRate")) || 0,
-      minimumPayment: Number(formData.get("minimumPayment")),
+      balance: Math.round(Number(formData.get("balance")) * 100) / 100,
+      interestRate: formData.get("interestRate")
+        ? Math.round(Number(formData.get("interestRate")) * 100) / 100
+        : null,
+      minimumPayment: formData.get("minimumPayment")
+        ? Math.round(Number(formData.get("minimumPayment")) * 100) / 100
+        : null,
       frequency: formData.get("frequency"),
       dueDay: Number(formData.get("dueDay")) || null,
     };
@@ -119,22 +123,25 @@ export function EditDebtForm({ debt }: Props) {
         name="balance"
         type="number"
         defaultValue={debt.balance}
-        min={1}
+        min={0.01}
+        step="0.01"
         required
       />
 
       <Input
         name="interestRate"
         type="number"
-        defaultValue={debt.interestRate ?? 0}
+        defaultValue={debt.interestRate ?? undefined}
+        min={0}
+        step="0.01"
       />
 
       <Input
         name="minimumPayment"
         type="number"
-        defaultValue={debt.minimumPayment}
-        min={1}
-        required
+        defaultValue={debt.minimumPayment ?? undefined}
+        min={0.01}
+        step="0.01"
       />
 
       <Select name="frequency" defaultValue={debt.frequency ?? "monthly"}>

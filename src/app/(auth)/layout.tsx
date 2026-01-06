@@ -17,8 +17,8 @@ export default function AuthLayout({ children }: Readonly<{ children: React.Reac
             </Link>
           </div>
           <div className="rounded-2xl border border-border/70 bg-card/80 p-4 text-sm text-muted-foreground shadow-sm backdrop-blur">
-            Debt clarity, income, and expenses in one calm dashboard. Light and dark themes match what you saw on the
-            homepage.
+            UK-first debt snowball with no bank scraping. Guardrails for UC, rent, and essentials match what you saw on
+            the homepage.
           </div>
           {children}
         </div>

@@ -1,44 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-
-type ExpenseType =
-  | "housing"
-  | "utilities"
-  | "transport"
-  | "food"
-  | "childcare"
-  | "insurance"
-  | "subscriptions"
-  | "medical"
-  | "education"
-  | "entertainment"
-  | "savings"
-  | "other"
-  | "rent"
-  | "service_charge"
-  | "council_tax"
-  | "gas"
-  | "electric"
-  | "water"
-  | "car_fuel"
-  | "groceries"
-  | "phone"
-  | "internet";
-
-type ExpenseCategory = ExpenseType;
-type ExpenseFrequency = "weekly" | "fortnightly" | "four_weekly" | "monthly" | "quarterly" | "yearly";
+import {
+  categoryOptions,
+  deriveCategory,
+  normalizeCurrency,
+  normalizeExpenseToMonthly,
+  subcategoryOptions,
+  ucEligibleSubcategories,
+  type ExpenseCategory,
+  type ExpenseFrequency,
+  type ExpenseType,
+} from "@/lib/expenses";
+import { formatCurrency } from "@/lib/format";
 
 type Props = {
   expense: {
@@ -60,18 +39,37 @@ export function EditExpenseForm({ expense }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [paidByUc, setPaidByUc] = useState<boolean>(Boolean(expense.paidByUc));
 
+  const initialCategory = deriveCategory(expense.category as ExpenseCategory, expense.type as ExpenseType);
+  const [category, setCategory] = useState<ExpenseCategory>(initialCategory);
+  const [subcategory, setSubcategory] = useState<ExpenseType>(expense.type);
+  const [frequency, setFrequency] = useState<ExpenseFrequency>(expense.frequency ?? "monthly");
+  const [amountInput, setAmountInput] = useState<string>(String(expense.amount ?? ""));
+
+  const monthlyEstimate = useMemo(() => {
+    const parsed = Number(amountInput);
+    if (!Number.isFinite(parsed) || parsed <= 0) return 0;
+    return normalizeExpenseToMonthly(parsed, frequency);
+  }, [amountInput, frequency]);
+
   async function onSubmit(formData: FormData) {
     setLoading(true);
     setError(null);
 
+    const amount = normalizeCurrency(amountInput || formData.get("amount"));
+    if (!formData.get("name") || !amount || amount <= 0) {
+      setError("Please provide a name and an amount.");
+      setLoading(false);
+      return;
+    }
+
     const payload = {
       name: formData.get("name"),
-      type: formData.get("type") as ExpenseType,
-      amount: Number(formData.get("amount")),
-      category: formData.get("category") as ExpenseCategory,
-      frequency: formData.get("frequency") as ExpenseFrequency,
+      type: subcategory,
+      amount,
+      category,
+      frequency,
       paymentDay: Number(formData.get("paymentDay")) || null,
-      paidByUc: formData.get("paidByUc") === "on",
+      paidByUc: ucEligibleSubcategories.includes(subcategory) && formData.get("paidByUc") === "on",
     };
 
     const res = await fetch(`/api/expenses/${expense.id}`, {
@@ -94,89 +92,101 @@ export function EditExpenseForm({ expense }: Props) {
 
   if (!editing) {
     return (
-      <Button
-        size="sm"
-        variant="secondary"
-        onClick={() => setEditing(true)}
-      >
+      <Button size="sm" variant="secondary" onClick={() => setEditing(true)}>
         Edit
       </Button>
     );
   }
 
   return (
-    <form action={onSubmit} className="space-y-2">
-      <Input
-        name="name"
-        defaultValue={expense.name}
-        required
-        disabled={loading}
-      />
+    <form
+      className="space-y-3"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        const formData = new FormData(e.currentTarget);
+        await onSubmit(formData);
+      }}
+    >
+      <Input name="name" defaultValue={expense.name} required disabled={loading} />
 
-      <Select
-        name="type"
-        defaultValue={expense.type}
-        disabled={loading}
-      >
-        <SelectTrigger>
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="housing">Housing</SelectItem>
-          <SelectItem value="utilities">Utilities</SelectItem>
-          <SelectItem value="transport">Transport</SelectItem>
-          <SelectItem value="food">Food</SelectItem>
-          <SelectItem value="childcare">Childcare</SelectItem>
-          <SelectItem value="insurance">Insurance</SelectItem>
-          <SelectItem value="subscriptions">Subscriptions</SelectItem>
-          <SelectItem value="medical">Medical</SelectItem>
-          <SelectItem value="education">Education</SelectItem>
-          <SelectItem value="entertainment">Entertainment</SelectItem>
-          <SelectItem value="savings">Savings</SelectItem>
-          <SelectItem value="other">Other</SelectItem>
-        </SelectContent>
-      </Select>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Select
+          name="category"
+          value={category}
+          disabled={loading}
+          onValueChange={(v) => {
+            const nextCategory = v as ExpenseCategory;
+            setCategory(nextCategory);
+            const options = subcategoryOptions[nextCategory] ?? [];
+            const currentValid = options.some((opt) => opt.id === subcategory);
+            const nextSub = currentValid ? subcategory : (options[0]?.id ?? subcategory);
+            if (nextSub !== subcategory) {
+              setSubcategory(nextSub as ExpenseType);
+            }
+            if (!ucEligibleSubcategories.includes(nextSub as ExpenseType)) {
+              setPaidByUc(false);
+            }
+          }}
+        >
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {categoryOptions.map((opt) => (
+              <SelectItem key={opt.id} value={opt.id}>
+                {opt.label} - {opt.description}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
-      <Select name="category" defaultValue={expense.category ?? "other"} disabled={loading}>
-        <SelectTrigger>
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="rent">Rent</SelectItem>
-          <SelectItem value="service_charge">Service charge</SelectItem>
-          <SelectItem value="council_tax">Council tax</SelectItem>
-          <SelectItem value="gas">Gas</SelectItem>
-          <SelectItem value="electric">Electric</SelectItem>
-          <SelectItem value="water">Water</SelectItem>
-          <SelectItem value="car_fuel">Car fuel</SelectItem>
-          <SelectItem value="groceries">Groceries</SelectItem>
-          <SelectItem value="phone">Phone</SelectItem>
-          <SelectItem value="internet">Internet</SelectItem>
-          <SelectItem value="housing">Housing</SelectItem>
-          <SelectItem value="utilities">Utilities</SelectItem>
-          <SelectItem value="transport">Transport</SelectItem>
-          <SelectItem value="food">Food</SelectItem>
-          <SelectItem value="childcare">Childcare</SelectItem>
-          <SelectItem value="insurance">Insurance</SelectItem>
-          <SelectItem value="subscriptions">Subscriptions</SelectItem>
-          <SelectItem value="medical">Medical</SelectItem>
-          <SelectItem value="education">Education</SelectItem>
-          <SelectItem value="entertainment">Entertainment</SelectItem>
-          <SelectItem value="savings">Savings</SelectItem>
-          <SelectItem value="other">Other</SelectItem>
-        </SelectContent>
-      </Select>
+        <Select
+          name="subcategory"
+          value={subcategory}
+          disabled={loading}
+          onValueChange={(v) => {
+            setSubcategory(v as ExpenseType);
+            setPaidByUc(false);
+          }}
+        >
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {(subcategoryOptions[category] ?? []).map((opt) => (
+              <SelectItem key={opt.id} value={opt.id}>
+                {opt.label} - {opt.description}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
 
       <Input
         name="amount"
         type="number"
-        defaultValue={expense.amount}
-        min={1}
+        min={0.01}
+        step="0.01"
         required
+        value={amountInput}
+        onChange={(e) => setAmountInput(e.target.value)}
         disabled={loading}
       />
+      <div className="flex items-center justify-between text-xs text-muted-foreground">
+        <span>Frequency</span>
+        <span>
+          {monthlyEstimate > 0
+            ? `≈ ${formatCurrency(monthlyEstimate)}/mo${paidByUc ? " (UC-covered)" : ""}`
+            : "Converted to per month"}
+        </span>
+      </div>
 
-      <Select name="frequency" defaultValue={expense.frequency ?? "monthly"} disabled={loading}>
+      <Select
+        name="frequency"
+        value={frequency}
+        disabled={loading}
+        onValueChange={(v) => setFrequency(v as ExpenseFrequency)}
+      >
         <SelectTrigger>
           <SelectValue />
         </SelectTrigger>
@@ -204,18 +214,16 @@ export function EditExpenseForm({ expense }: Props) {
         <Checkbox
           name="paidByUc"
           id={`paidByUc-${expense.id}`}
-          checked={paidByUc}
+          checked={paidByUc && ucEligibleSubcategories.includes(subcategory)}
           onCheckedChange={(checked) => setPaidByUc(Boolean(checked))}
-          disabled={loading}
+          disabled={loading || !ucEligibleSubcategories.includes(subcategory)}
         />
         <label htmlFor={`paidByUc-${expense.id}`} className="text-sm text-foreground">
-          Paid by UC
+          Paid by UC (deducted and excluded)
         </label>
       </div>
 
-      {error && (
-        <p className="text-sm text-red-500">{error}</p>
-      )}
+      {error && <p className="text-sm text-red-500">{error}</p>}
 
       <div className="flex gap-2">
         <Button type="submit" size="sm" disabled={loading}>
@@ -225,7 +233,15 @@ export function EditExpenseForm({ expense }: Props) {
           type="button"
           size="sm"
           variant="ghost"
-          onClick={() => setEditing(false)}
+          onClick={() => {
+            setEditing(false);
+            setError(null);
+            setAmountInput(String(expense.amount ?? ""));
+            setCategory(initialCategory);
+            setSubcategory(expense.type);
+            setFrequency(expense.frequency ?? "monthly");
+            setPaidByUc(Boolean(expense.paidByUc));
+          }}
           disabled={loading}
         >
           Cancel

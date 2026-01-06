@@ -1,5 +1,6 @@
 import nodemailer from "nodemailer";
 import { render } from "@react-email/render";
+import { Resend } from "resend";
 import ResetPasswordEmail from "@/emails/reset-password";
 import VerifyEmailEmail from "@/emails/verify-email";
 import WelcomeEmail from "@/emails/welcome";
@@ -16,6 +17,7 @@ const port = Number(process.env.MAILPIT_PORT || 1025);
 const from = process.env.MAIL_FROM || "BabySteps <no-reply@babysteps.test>";
 const resendApiKey = process.env.RESEND_API_KEY;
 const resendFrom = process.env.RESEND_FROM || from;
+const isProd = process.env.NODE_ENV === "production";
 
 const transporter = nodemailer.createTransport({
   host,
@@ -23,25 +25,18 @@ const transporter = nodemailer.createTransport({
 });
 
 export async function sendMail({ to, subject, text, html }: MailArgs) {
-  if (resendApiKey) {
-    const res = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${resendApiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from: resendFrom,
-        to: [to],
-        subject,
-        html,
-        text,
-      }),
+  if (isProd && resendApiKey) {
+    const resend = new Resend(resendApiKey);
+    const { error } = await resend.emails.send({
+      from: resendFrom,
+      to,
+      subject,
+      html,
+      text,
     });
 
-    if (!res.ok) {
-      const body = await res.text();
-      throw new Error(`Resend failed: ${res.status} ${body}`);
+    if (error) {
+      throw new Error(`Resend failed: ${error.message}`);
     }
     return;
   }

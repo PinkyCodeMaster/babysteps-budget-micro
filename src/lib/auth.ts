@@ -6,6 +6,8 @@ import { nextCookies } from "better-auth/next-js";
 import { buildResetPasswordEmail, buildVerifyEmail, buildWelcomeEmail, sendMail } from "@/lib/mail";
 import { expo } from "@better-auth/expo";
 
+const appUrl = (process.env.BETTER_AUTH_URL || "http://localhost:3000").replace(/\/$/, "");
+
 export const auth = betterAuth({
     database: drizzleAdapter(db, {
         provider: "pg",
@@ -45,7 +47,7 @@ export const auth = betterAuth({
             }).catch((err) => console.error("send verification email failed", err));
         },
         afterEmailVerification: async (user) => {
-            const email = await buildWelcomeEmail("https://localhost:3000/dashboard");
+            const email = await buildWelcomeEmail(`${appUrl}/onboarding`);
             void sendMail({
                 to: user.email,
                 subject: email.subject,
