@@ -94,7 +94,7 @@ function parseCsv(text: string) {
   for (let i = 1; i < lines.length; i++) {
     const parts = splitLine(lines[i], delimiter);
     const row: Record<string, string> = {};
-    [...requiredHeaders, ...optionalHeaders].forEach((key, idx) => {
+    [...requiredHeaders, ...optionalHeaders].forEach((key) => {
       const colIndex = header.indexOf(key.toLowerCase());
       row[key] = colIndex >= 0 ? parts[colIndex] ?? "" : "";
     });

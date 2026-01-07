@@ -29,7 +29,6 @@ type IncomeWithNet = {
   netMonthly: number;
 };
 
-const allowedTypes: IncomeType[] = ["hourly", "monthly_net", "yearly_gross", "uc"];
 const allowedCategories: IncomeCategory[] = ["wage", "benefit", "uc", "disability_pension", "side_gig", "second_job", "other"];
 const allowedFrequencies: PaymentFrequency[] = ["weekly", "fortnightly", "four_weekly", "monthly", "quarterly", "yearly"];
 const allowedRules: PaymentDayRule[] = ["specific_day", "last_working_day", "last_friday", "last_thursday"];

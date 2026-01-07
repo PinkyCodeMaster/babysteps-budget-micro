@@ -59,7 +59,6 @@ export function EditIncomeForm({ income }: Props) {
   const [basis, setBasis] = useState<IncomeBasis>(initialBasis);
   const [frequency, setFrequency] = useState<PaymentFrequency>(income.frequency ?? "monthly");
   const [dayRule, setDayRule] = useState<PaymentDayRule>(income.paymentDayRule ?? "specific_day");
-  const [category, setCategory] = useState<IncomeCategory>(income.category ?? "wage");
   const [hoursInput, setHoursInput] = useState<string>(income.hoursPerWeek?.toString() ?? "");
 
   const initialDisplayAmount = denormalizeIncomeAmount(Number(income.amount) || 0, initialBasis);
@@ -134,17 +133,12 @@ export function EditIncomeForm({ income }: Props) {
     <form action={onSubmit} className="space-y-2">
       <Input name="name" defaultValue={income.name} required disabled={loading} />
 
-      <Select
-        name="category"
-        defaultValue={income.category ?? "wage"}
-        disabled={loading}
-        onValueChange={(v) => setCategory(v as IncomeCategory)}
-      >
-        <SelectTrigger>
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="wage">Wage / salary</SelectItem>
+        <Select name="category" defaultValue={income.category ?? "wage"} disabled={loading}>
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="wage">Wage / salary</SelectItem>
           <SelectItem value="benefit">Benefit</SelectItem>
           <SelectItem value="uc">Universal Credit</SelectItem>
           <SelectItem value="disability_pension">Disability/Pension</SelectItem>

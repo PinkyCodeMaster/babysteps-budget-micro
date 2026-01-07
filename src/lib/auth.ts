@@ -60,7 +60,7 @@ export const auth = betterAuth({
         expo(),
         nextCookies()
     ],
-    trustedOrigins: ['http//localhost:3000', "http://192.168.0.27:3000","native://"]
+    trustedOrigins: ['http//localhost:3000', "http://192.168.0.27:3000", "native://"]
 });
 
 export type Session = typeof auth.$Infer.Session

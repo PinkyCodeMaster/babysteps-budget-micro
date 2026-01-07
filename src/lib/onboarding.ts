@@ -38,11 +38,15 @@ export async function getOnboardingProgress(userId: string) {
     db.query.user.findFirst({ where: eq(user.id, userId), columns: { notifyEmails: true, onboardingStep: true } }),
   ]);
 
+  const incomesCount = incomes.length;
+  const expensesCount = expenses.length;
+  const debtsCount = debts.length;
+  const computedStep = computeOnboardingStep({ incomesCount, expensesCount, debtsCount });
   const storedStep = prefs?.onboardingStep;
   const step: OnboardingStep =
     storedStep === "incomes" || storedStep === "expenses" || storedStep === "debts" || storedStep === "done"
       ? storedStep
-      : "incomes";
+      : computedStep;
 
   if (prefs?.onboardingStep !== step) {
     await db
