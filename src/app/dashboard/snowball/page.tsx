@@ -375,9 +375,20 @@ export default async function SnowballPage({
                           </Badge>
                         ))}
                         {data.summary.payoffPreview.cleared.length > 3 && (
-                          <Badge variant="secondary">
-                            +{data.summary.payoffPreview.cleared.length - 3} more
-                          </Badge>
+                          <details className="inline-flex">
+                            <summary className="inline-flex cursor-pointer list-none">
+                              <Badge variant="secondary">
+                                +{data.summary.payoffPreview.cleared.length - 3} more
+                              </Badge>
+                            </summary>
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              {data.summary.payoffPreview.cleared.slice(3).map((debt) => (
+                                <Badge key={debt.id} variant="outline">
+                                  {debt.name}
+                                </Badge>
+                              ))}
+                            </div>
+                          </details>
                         )}
                       </div>
                     </div>
