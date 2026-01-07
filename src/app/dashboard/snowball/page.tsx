@@ -10,6 +10,7 @@ import { AddPaymentForm } from "@/components/dashboard/add-payment-form";
 import { DebtsVisuals } from "@/components/dashboard/debts-visuals";
 import { DeleteDebtButton } from "@/components/dashboard/delete-debt-button";
 import { EditDebtForm } from "@/components/dashboard/edit-debt-form";
+import { ExpandableBadges } from "@/components/dashboard/expandable-badges";
 import { auth } from "@/lib/auth";
 import {
   calculateUcPayment,
@@ -368,29 +369,13 @@ export default async function SnowballPage({
                         This month, your snowball can fully clear {data.summary.payoffPreview.cleared.length} debt
                         {data.summary.payoffPreview.cleared.length === 1 ? "" : "s"}:
                       </span>
-                      <div className="flex flex-wrap gap-2">
-                        {data.summary.payoffPreview.cleared.slice(0, 3).map((debt) => (
-                          <Badge key={debt.id} variant="outline">
-                            {debt.name}
-                          </Badge>
-                        ))}
-                        {data.summary.payoffPreview.cleared.length > 3 && (
-                          <details className="inline-flex">
-                            <summary className="inline-flex cursor-pointer list-none">
-                              <Badge variant="secondary">
-                                +{data.summary.payoffPreview.cleared.length - 3} more
-                              </Badge>
-                            </summary>
-                            <div className="mt-2 flex flex-wrap gap-2">
-                              {data.summary.payoffPreview.cleared.slice(3).map((debt) => (
-                                <Badge key={debt.id} variant="outline">
-                                  {debt.name}
-                                </Badge>
-                              ))}
-                            </div>
-                          </details>
-                        )}
-                      </div>
+                      <ExpandableBadges
+                        items={data.summary.payoffPreview.cleared.map((debt) => ({
+                          id: debt.id,
+                          label: debt.name,
+                        }))}
+                        initialCount={3}
+                      />
                     </div>
                   )}
 
