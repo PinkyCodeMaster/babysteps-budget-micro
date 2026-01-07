@@ -16,6 +16,7 @@ export const debtTypeEnum = pgEnum("debt_type", [
   "store_card",
   "hire_purchase",
   "ccj",
+  "uc_advance",
   "old_phone_bill",
   "rent_arrears",
   "gas_arrears",

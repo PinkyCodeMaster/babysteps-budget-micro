@@ -28,7 +28,7 @@ import type { OnboardingStep } from "@/lib/onboarding";
 import { computeOnboardingStep } from "@/lib/onboarding";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
-import { formatExpenseAmounts, type ExpenseFrequency } from "@/lib/expenses";
+import { formatExpenseAmounts, normalizeExpenseToMonthly, type ExpenseFrequency } from "@/lib/expenses";
 import { Badge } from "@/components/ui/badge";
 
 type Debt = {
@@ -39,6 +39,7 @@ type Debt = {
   interestRate: number | null;
   minimumPayment: number | null;
   remainingBalance: number;
+  frequency: ExpenseFrequency;
   dueDay: number | null;
   payments: { amount: number; paymentDate: string }[];
 };
@@ -95,6 +96,72 @@ async function loadDashboardData(sort: SortKey): Promise<DashboardData> {
     with: { payments: true },
     where: eq(debtTable.userId, session!.user.id),
   });
+
+  const enriched: DebtWithTotals[] = debts.map((debt) => {
+    const payments = debt.payments.map((p) => {
+      const rawAmount = Number(p.amount);
+      const amount = Number.isFinite(rawAmount) ? rawAmount : 0;
+      return { ...p, amount };
+    });
+    const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
+    const rawBalance = Number(debt.balance);
+    const balance = Number.isFinite(rawBalance) ? rawBalance : 0;
+    const rawRate = debt.interestRate === null ? null : Number(debt.interestRate);
+    const interestRate = rawRate !== null && Number.isFinite(rawRate) ? rawRate : null;
+    const rawMinimum = debt.minimumPayment === null ? null : Number(debt.minimumPayment);
+    const minimumPayment = rawMinimum !== null && Number.isFinite(rawMinimum) ? rawMinimum : null;
+    const rawDueDay = debt.dueDay === null || debt.dueDay === undefined ? null : Number(debt.dueDay);
+    const dueDay = rawDueDay !== null && Number.isInteger(rawDueDay) ? rawDueDay : null;
+    const remainingBalance = balance - totalPaid;
+    const frequency = (debt.frequency as ExpenseFrequency) ?? "monthly";
+    return {
+      ...debt,
+      balance,
+      interestRate,
+      minimumPayment,
+      dueDay,
+      frequency,
+      totalPaid,
+      remainingBalance,
+      payments,
+    };
+  });
+
+  const sortedDebts = sortDebts(enriched, sort);
+  const totalDebt = enriched.reduce(
+    (sum, d) => sum + (Number.isFinite(d.balance) ? d.balance : 0),
+    0
+  );
+  const totalPaid = enriched.reduce(
+    (sum, d) => sum + (Number.isFinite(d.totalPaid) ? d.totalPaid : 0),
+    0
+  );
+
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
+  const paidThisMonth = enriched.reduce((sum, d) => {
+    return (
+      sum +
+      d.payments.reduce((pSum, p) => {
+        const dt = new Date(p.paymentDate as unknown as string);
+        const amount = Number.isFinite(p.amount) ? p.amount : 0;
+        return dt.getMonth() === currentMonth && dt.getFullYear() === currentYear
+          ? pSum + amount
+          : pSum;
+      }, 0)
+    );
+  }, 0);
+
+  const progressPercent = calculateProgress(totalDebt, totalPaid);
+
+  const ucAdvanceMonthly = enriched
+    .filter((debt) => debt.type === "uc_advance" && debt.remainingBalance > 0)
+    .reduce((sum, debt) => {
+      const minimum = Number.isFinite(debt.minimumPayment ?? NaN) ? (debt.minimumPayment as number) : 0;
+      if (minimum <= 0) return sum;
+      return sum + normalizeExpenseToMonthly(minimum, debt.frequency);
+    }, 0);
 
   const incomesRaw = await db.query.incomeTable.findMany({
     where: eq(incomeTable.userId, session!.user.id),
@@ -168,13 +235,14 @@ async function loadDashboardData(sort: SortKey): Promise<DashboardData> {
   const paidByUcMonthly = expenses
     .filter((exp) => exp.paidByUc)
     .reduce((sum, exp) => sum + (Number.isFinite(exp.monthlyAmount) ? exp.monthlyAmount : 0), 0);
+  const paidByUcTotal = paidByUcMonthly + ucAdvanceMonthly;
 
   const ucPayment = calculateUcPayment({
     incomes,
     base: ucBase,
     taperIgnore,
     taperRate,
-    paidByUcMonthly,
+    paidByUcMonthly: paidByUcTotal,
   });
   const incomesWithoutUc = incomes.filter(
     (inc) => inc !== ucCandidate && inc.type !== "uc"
@@ -190,62 +258,6 @@ async function loadDashboardData(sort: SortKey): Promise<DashboardData> {
     where: eq(user.id, session.user.id),
     columns: { notifyEmails: true, onboardingStep: true },
   });
-
-  const enriched: DebtWithTotals[] = debts.map((debt) => {
-    const payments = debt.payments.map((p) => {
-      const rawAmount = Number(p.amount);
-      const amount = Number.isFinite(rawAmount) ? rawAmount : 0;
-      return { ...p, amount };
-    });
-    const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
-    const rawBalance = Number(debt.balance);
-    const balance = Number.isFinite(rawBalance) ? rawBalance : 0;
-    const rawRate = debt.interestRate === null ? null : Number(debt.interestRate);
-    const interestRate = rawRate !== null && Number.isFinite(rawRate) ? rawRate : null;
-    const rawMinimum = debt.minimumPayment === null ? null : Number(debt.minimumPayment);
-    const minimumPayment = rawMinimum !== null && Number.isFinite(rawMinimum) ? rawMinimum : null;
-    const rawDueDay = debt.dueDay === null || debt.dueDay === undefined ? null : Number(debt.dueDay);
-    const dueDay = rawDueDay !== null && Number.isInteger(rawDueDay) ? rawDueDay : null;
-    const remainingBalance = balance - totalPaid;
-    return {
-      ...debt,
-      balance,
-      interestRate,
-      minimumPayment,
-      dueDay,
-      totalPaid,
-      remainingBalance,
-      payments,
-    };
-  });
-
-  const sortedDebts = sortDebts(enriched, sort);
-  const totalDebt = enriched.reduce(
-    (sum, d) => sum + (Number.isFinite(d.balance) ? d.balance : 0),
-    0
-  );
-  const totalPaid = enriched.reduce(
-    (sum, d) => sum + (Number.isFinite(d.totalPaid) ? d.totalPaid : 0),
-    0
-  );
-
-  const now = new Date();
-  const currentMonth = now.getMonth();
-  const currentYear = now.getFullYear();
-  const paidThisMonth = enriched.reduce((sum, d) => {
-    return (
-      sum +
-      d.payments.reduce((pSum, p) => {
-        const dt = new Date(p.paymentDate as unknown as string);
-        const amount = Number.isFinite(p.amount) ? p.amount : 0;
-        return dt.getMonth() === currentMonth && dt.getFullYear() === currentYear
-          ? pSum + amount
-          : pSum;
-      }, 0)
-    );
-  }, 0);
-
-  const progressPercent = calculateProgress(totalDebt, totalPaid);
 
   const onboardingStep =
     userPrefs?.onboardingStep ??
@@ -313,6 +325,9 @@ export default async function DashboardPage({
   }
 
   const totalMinimums = data.debts.reduce((sum, d) => {
+    if (d.type === "uc_advance" || d.remainingBalance <= 0) {
+      return sum;
+    }
     const min = d.minimumPayment ?? 0;
     return sum + (Number.isFinite(min) ? min : 0);
   }, 0);

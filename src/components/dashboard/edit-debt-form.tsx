@@ -108,6 +108,7 @@ export function EditDebtForm({ debt }: Props) {
           <SelectItem value="student_loan">Student Loan</SelectItem>
           <SelectItem value="store_card">Store Card</SelectItem>
           <SelectItem value="hire_purchase">Hire Purchase</SelectItem>
+          <SelectItem value="uc_advance">UC Advance (paid by UC)</SelectItem>
           <SelectItem value="old_phone_bill">Old Phone Bill</SelectItem>
           <SelectItem value="rent_arrears">Rent Arrears</SelectItem>
           <SelectItem value="gas_arrears">Gas Arrears</SelectItem>

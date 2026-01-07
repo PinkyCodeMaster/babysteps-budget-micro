@@ -127,7 +127,7 @@ export default async function OnboardingDebtsPage() {
         <AddDebtForm />
       </div>
 
-      <DebtCsvImport />
+      <DebtCsvImport refreshOnSuccess />
 
       <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
         <form action={backToExpenses}>

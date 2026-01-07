@@ -125,6 +125,9 @@ export function AddDebtForm() {
               <SelectItem value="hire_purchase">
                 Hire Purchase
               </SelectItem>
+              <SelectItem value="uc_advance">
+                UC Advance (paid by UC)
+              </SelectItem>
               <SelectItem value="old_phone_bill">Old Phone Bill</SelectItem>
               <SelectItem value="rent_arrears">Rent Arrears</SelectItem>
               <SelectItem value="gas_arrears">Gas Arrears</SelectItem>
@@ -140,33 +143,11 @@ export function AddDebtForm() {
             </SelectContent>
           </Select>
 
-          <Input
-            name="balance"
-            type="number"
-            placeholder="Starting balance"
-            required
-            min={0.01}
-            step="0.01"
-            disabled={loading}
-          />
+          <Input name="balance" type="number" placeholder="Starting balance" required min={0.01} step="0.01" disabled={loading} />
 
-          <Input
-            name="interestRate"
-            type="number"
-            placeholder="Interest rate (%)"
-            min={0}
-            step="0.01"
-            disabled={loading}
-          />
+          <Input name="interestRate" type="number" placeholder="Interest rate (%)" min={0} step="0.01" disabled={loading} />
 
-          <Input
-            name="minimumPayment"
-            type="number"
-            placeholder="Minimum payment (optional)"
-            min={0.01}
-            step="0.01"
-            disabled={loading}
-          />
+          <Input name="minimumPayment" type="number" placeholder="Minimum payment (optional)" min={0.01} step="0.01" disabled={loading} />
 
           <Select name="frequency" required disabled={loading} defaultValue="monthly">
             <SelectTrigger>
@@ -182,14 +163,7 @@ export function AddDebtForm() {
             </SelectContent>
           </Select>
 
-          <Input
-            name="dueDay"
-            type="number"
-            placeholder="Due day (1-31, optional)"
-            min={1}
-            max={31}
-            disabled={loading}
-          />
+          <Input name="dueDay" type="number" placeholder="Due day (1-31, optional)" min={1} max={31} disabled={loading} />
 
           {error && (
             <p className="text-sm text-red-500" aria-live="polite">{error}</p>

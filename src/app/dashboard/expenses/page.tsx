@@ -33,6 +33,7 @@ type ExpenseType =
   | "rent"
   | "service_charge"
   | "council_tax"
+  | "gas_electric"
   | "gas"
   | "electric"
   | "water"
@@ -57,6 +58,7 @@ const labels: Record<ExpenseType, string> = {
   rent: "Rent",
   service_charge: "Service charge",
   council_tax: "Council tax",
+  gas_electric: "Gas + electric",
   gas: "Gas",
   electric: "Electric",
   water: "Water",

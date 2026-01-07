@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,7 +18,12 @@ type DuplicateRow = {
   reason: string;
 };
 
-export function DebtCsvImport() {
+type Props = {
+  refreshOnSuccess?: boolean;
+};
+
+export function DebtCsvImport({ refreshOnSuccess = false }: Props) {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -84,6 +90,9 @@ export function DebtCsvImport() {
       fileInputRef.current.value = "";
     }
     setLoading(false);
+    if (refreshOnSuccess) {
+      router.refresh();
+    }
   };
 
   return (

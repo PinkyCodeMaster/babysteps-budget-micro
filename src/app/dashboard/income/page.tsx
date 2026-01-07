@@ -7,7 +7,7 @@ import {
   SidebarProvider,
 } from "@/components/ui/sidebar";
 import { db } from "@/db";
-import { incomeTable } from "@/db/schema";
+import { debtTable, incomeTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { formatCurrency } from "@/lib/format";
 import {
@@ -30,7 +30,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import type React from "react";
-import { formatExpenseAmounts, type ExpenseFrequency } from "@/lib/expenses";
+import { formatExpenseAmounts, normalizeExpenseToMonthly, type ExpenseFrequency } from "@/lib/expenses";
 
 type IncomeWithNet = {
   id: number;
@@ -131,6 +131,10 @@ async function loadIncomeData() {
   const expenses = await db.query.expenseTable.findMany({
     where: eq(expenseTable.userId, session.user.id),
   });
+  const debts = await db.query.debtTable.findMany({
+    with: { payments: true },
+    where: eq(debtTable.userId, session.user.id),
+  });
   const paidByUcMonthly = expenses
     .filter((exp) => exp.paidByUc)
     .reduce((sum, exp) => {
@@ -141,13 +145,29 @@ async function loadIncomeData() {
       });
       return sum + monthlyAmount;
     }, 0);
+  const ucAdvanceMonthly = debts
+    .filter((debt) => debt.type === "uc_advance")
+    .reduce((sum, debt) => {
+      const payments = debt.payments ?? [];
+      const totalPaid = payments.reduce((pSum, p) => pSum + Number(p.amount ?? 0), 0);
+      const balance = Number(debt.balance);
+      if (!Number.isFinite(balance) || balance - totalPaid <= 0) {
+        return sum;
+      }
+      const minimum = debt.minimumPayment === null ? 0 : Number(debt.minimumPayment);
+      if (!Number.isFinite(minimum) || minimum <= 0) {
+        return sum;
+      }
+      const frequency = (debt.frequency as ExpenseFrequency) ?? "monthly";
+      return sum + normalizeExpenseToMonthly(minimum, frequency);
+    }, 0);
 
   const ucPayment = calculateUcPayment({
     incomes: enriched,
     base: ucBase,
     taperIgnore,
     taperRate,
-    paidByUcMonthly,
+    paidByUcMonthly: paidByUcMonthly + ucAdvanceMonthly,
   });
   const incomesWithoutUc = enriched.filter(
     (inc) => inc !== ucCandidate && inc.type !== "uc"

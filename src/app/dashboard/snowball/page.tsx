@@ -26,7 +26,7 @@ import { eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import type React from "react";
-import { formatExpenseAmounts, type ExpenseFrequency } from "@/lib/expenses";
+import { formatExpenseAmounts, normalizeExpenseToMonthly, type ExpenseFrequency } from "@/lib/expenses";
 
 type Debt = {
   id: number;
@@ -36,6 +36,7 @@ type Debt = {
   interestRate: number | null;
   minimumPayment: number | null;
   remainingBalance: number;
+  frequency: ExpenseFrequency;
   dueDay: number | null;
   payments: { amount: number; paymentDate: string }[];
 };
@@ -71,6 +72,44 @@ async function loadSnowball(sort: SortKey) {
     with: { payments: true },
     where: eq(debtTable.userId, session.user.id),
   });
+
+  const enriched: DebtWithTotals[] = debts.map((debt) => {
+    const payments = debt.payments.map((p) => {
+      const rawAmount = Number(p.amount);
+      const amount = Number.isFinite(rawAmount) ? rawAmount : 0;
+      return { ...p, amount };
+    });
+    const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
+    const rawBalance = Number(debt.balance);
+    const balance = Number.isFinite(rawBalance) ? rawBalance : 0;
+    const rawRate = debt.interestRate === null ? null : Number(debt.interestRate);
+    const interestRate = rawRate !== null && Number.isFinite(rawRate) ? rawRate : null;
+    const rawMinimum = debt.minimumPayment === null ? null : Number(debt.minimumPayment);
+    const minimumPayment = rawMinimum !== null && Number.isFinite(rawMinimum) ? rawMinimum : null;
+    const rawDueDay = debt.dueDay === null || debt.dueDay === undefined ? null : Number(debt.dueDay);
+    const dueDay = rawDueDay !== null && Number.isInteger(rawDueDay) ? rawDueDay : null;
+    const remainingBalance = balance - totalPaid;
+    const frequency = (debt.frequency as ExpenseFrequency) ?? "monthly";
+    return {
+      ...debt,
+      balance,
+      interestRate,
+      minimumPayment,
+      totalPaid,
+      remainingBalance,
+      payments,
+      dueDay,
+      frequency,
+    };
+  });
+
+  const ucAdvanceMonthly = enriched
+    .filter((debt) => debt.type === "uc_advance" && debt.remainingBalance > 0)
+    .reduce((sum, debt) => {
+      const minimum = Number.isFinite(debt.minimumPayment ?? NaN) ? (debt.minimumPayment as number) : 0;
+      if (minimum <= 0) return sum;
+      return sum + normalizeExpenseToMonthly(minimum, debt.frequency);
+    }, 0);
 
   const expensesRaw = await db.query.expenseTable.findMany({
     where: eq(expenseTable.userId, session.user.id),
@@ -133,6 +172,7 @@ async function loadSnowball(sort: SortKey) {
   const paidByUcMonthly = expensesWithMonthly
     .filter((exp) => exp.paidByUc)
     .reduce((sum, exp) => sum + (Number.isFinite(exp.monthlyAmount) ? exp.monthlyAmount : 0), 0);
+  const paidByUcTotal = paidByUcMonthly + ucAdvanceMonthly;
   const monthlyExpenses = expensesWithMonthly.reduce(
     (sum, exp) => sum + (Number.isFinite(exp.monthlyOutOfPocket) ? exp.monthlyOutOfPocket : 0),
     0
@@ -143,7 +183,7 @@ async function loadSnowball(sort: SortKey) {
     base: ucBase,
     taperIgnore,
     taperRate,
-    paidByUcMonthly,
+    paidByUcMonthly: paidByUcTotal,
   });
   const incomesWithoutUc = incomes.filter(
     (inc) => inc !== ucCandidate && inc.type !== "uc"
@@ -155,27 +195,11 @@ async function loadSnowball(sort: SortKey) {
   const ucPaymentSafe = Number.isFinite(ucPayment) ? ucPayment : 0;
   const householdIncome = monthlyIncome + ucPaymentSafe;
 
-  const enriched: DebtWithTotals[] = debts.map((debt) => {
-    const payments = debt.payments.map((p) => {
-      const rawAmount = Number(p.amount);
-      const amount = Number.isFinite(rawAmount) ? rawAmount : 0;
-      return { ...p, amount };
-    });
-    const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
-    const rawBalance = Number(debt.balance);
-    const balance = Number.isFinite(rawBalance) ? rawBalance : 0;
-    const rawRate = debt.interestRate === null ? null : Number(debt.interestRate);
-    const interestRate = rawRate !== null && Number.isFinite(rawRate) ? rawRate : null;
-    const rawMinimum = debt.minimumPayment === null ? null : Number(debt.minimumPayment);
-    const minimumPayment = rawMinimum !== null && Number.isFinite(rawMinimum) ? rawMinimum : null;
-    const rawDueDay = debt.dueDay === null || debt.dueDay === undefined ? null : Number(debt.dueDay);
-    const dueDay = rawDueDay !== null && Number.isInteger(rawDueDay) ? rawDueDay : null;
-    const remainingBalance = balance - totalPaid;
-    return { ...debt, balance, interestRate, minimumPayment, totalPaid, remainingBalance, payments, dueDay };
-  });
-
   const sorted = sortDebts(enriched, sort);
   const totalMinimums = enriched.reduce((sum, d) => {
+    if (d.type === "uc_advance" || d.remainingBalance <= 0) {
+      return sum;
+    }
     const min = d.minimumPayment ?? 0;
     return sum + (Number.isFinite(min) ? min : 0);
   }, 0);

@@ -26,6 +26,7 @@ const subcategoryOptionsByCategory = {
     { id: "council_tax", label: "Council tax", description: "Council tax payments" },
   ],
   utilities: [
+    { id: "gas_electric", label: "Gas + electric (combined)", description: "Single supplier for gas and electric" },
     { id: "gas", label: "Gas", description: "Gas or LPG supply" },
     { id: "electric", label: "Electric", description: "Electricity supply" },
     { id: "water", label: "Water", description: "Water or sewerage" },
@@ -57,6 +58,9 @@ export const subcategoryOptions: Record<ExpenseCategory, ReadonlyArray<Subcatego
     { id: "service_charge", label: "Service charge", description: "Block fees, ground rent, factor" },
   ],
   council_tax: [{ id: "council_tax", label: "Council tax", description: "Council tax payments" }],
+  gas_electric: [
+    { id: "gas_electric", label: "Gas + electric (combined)", description: "Single supplier for gas and electric" },
+  ],
   gas: [{ id: "gas", label: "Gas", description: "Gas or LPG supply" }],
   electric: [{ id: "electric", label: "Electric", description: "Electricity supply" }],
   water: [{ id: "water", label: "Water", description: "Water or sewerage" }],
@@ -68,7 +72,15 @@ export const subcategoryOptions: Record<ExpenseCategory, ReadonlyArray<Subcatego
 
 const baseCategoryIds: BaseCategory[] = categoryOptions.map((c) => c.id);
 
-export const ucEligibleSubcategories: ExpenseType[] = ["rent", "service_charge", "council_tax", "gas", "electric", "water"];
+export const ucEligibleSubcategories: ExpenseType[] = [
+  "rent",
+  "service_charge",
+  "council_tax",
+  "gas_electric",
+  "gas",
+  "electric",
+  "water",
+];
 
 export function isExpenseType(value: unknown): value is ExpenseType {
   if (baseCategoryIds.includes(value as BaseCategory)) return true;
