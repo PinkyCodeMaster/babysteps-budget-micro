@@ -3,6 +3,7 @@ import { debtTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { logError } from "@/lib/logger";
+import { eq } from "drizzle-orm";
 
 type DebtType =
   | "credit_card"
@@ -64,9 +65,57 @@ function safeDay(value?: number | null) {
   return null;
 }
 
-// Listing debts is handled inside server components to avoid a broad "get all" API.
+// List debts scoped to the signed-in user with payments and derived totals.
 export async function GET() {
-  return Response.json({ error: "Listing debts is not available via this endpoint." }, { status: 405 });
+  let userId: string | null = null;
+  try {
+    const session = await auth.api.getSession({ headers: await headers() });
+    if (!session) {
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    userId = session.user.id;
+
+    const debts = await db.query.debtTable.findMany({
+      with: { payments: true },
+      where: eq(debtTable.userId, session.user.id),
+    });
+
+    const enriched = debts.map((debt) => {
+      const payments = debt.payments.map((payment) => {
+        const rawAmount = Number(payment.amount);
+        const amount = Number.isFinite(rawAmount) ? rawAmount : 0;
+        return { ...payment, amount };
+      });
+
+      const rawBalance = Number(debt.balance);
+      const balance = Number.isFinite(rawBalance) ? rawBalance : 0;
+      const totalPaid = payments.reduce((sum, payment) => sum + payment.amount, 0);
+      const remainingBalance = balance - totalPaid;
+
+      const rawRate = debt.interestRate === null ? null : Number(debt.interestRate);
+      const interestRate = rawRate !== null && Number.isFinite(rawRate) ? rawRate : null;
+      const rawMinimum = debt.minimumPayment === null ? null : Number(debt.minimumPayment);
+      const minimumPayment = rawMinimum !== null && Number.isFinite(rawMinimum) ? rawMinimum : null;
+      const rawDueDay = debt.dueDay === null || debt.dueDay === undefined ? null : Number(debt.dueDay);
+      const dueDay = rawDueDay !== null && Number.isInteger(rawDueDay) ? rawDueDay : null;
+
+      return {
+        ...debt,
+        balance,
+        interestRate,
+        minimumPayment,
+        dueDay,
+        totalPaid,
+        remainingBalance,
+        payments,
+      };
+    });
+
+    return Response.json({ debts: enriched });
+  } catch (error) {
+    logError("GET /api/debts failed", error, { userId });
+    return Response.json({ error: "Unexpected error" }, { status: 500 });
+  }
 }
 
 // Creates a debt; numeric fields validated server-side and scoped to the signed-in user.
